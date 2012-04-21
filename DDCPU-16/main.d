@@ -13,5 +13,5 @@ void main(string[] args)
 void realmain(string[] args) @safe
 {
     auto cpu = new CPU();
-    cpu.run();
+    //cpu.run();
 }

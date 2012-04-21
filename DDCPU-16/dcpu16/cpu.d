@@ -30,7 +30,7 @@ class CPU
      *   code = the stuff to load into memory.
      * Throws: Exception if there's not enough room to load.
      */
-    final void load(ushort[] code) @safe
+    final void load(in ushort[] code) @safe
     {
         if (code.length > MEMORY_SIZE) {
             throw new Exception("not enough memory to perform CPU.load().");
@@ -39,11 +39,38 @@ class CPU
     }
 
     /**
-     * Run the CPU in a loop.
+     * Run the CPU for a certain number of cycles.
      */
-    final void run() @safe
+    final void run(in int cycles) @safe
     {
-        while (true) {
+        int remainingCycles = cycles;
+        while (remainingCycles > 0) {
+            Instruction instruction = decode(memory[PC++]);
+            remainingCycles--;
+            execute(instruction, remainingCycles);
+        }
+    }
+
+    final void execute(ref const Instruction instruction, out int cycles) @safe
+    {
+        final switch (instruction.opcode) with (Instruction.Opcode) {
+        case NonBasic:
+        case SET:
+        case ADD:
+        case SUB:
+        case MUL:
+        case DIV:
+        case MOD:
+        case SHL:
+        case SHR:
+        case AND:
+        case BOR:
+        case XOR:
+        case IFE:
+        case IFN:
+        case IFG:
+        case IFB:
+            break;
         }
     }
 }
