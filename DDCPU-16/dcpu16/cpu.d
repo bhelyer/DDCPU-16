@@ -47,8 +47,9 @@ class CPU
         int remainingCycles = cycles;
         while (remainingCycles > 0) {
             Instruction instruction = decode(memory[PC++]);
-            remainingCycles--;
+            long cc = cycleCount;
             execute(instruction);
+            remainingCycles -= cast(int) (cycleCount - cc);
         }
     }
 
