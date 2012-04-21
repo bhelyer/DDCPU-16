@@ -61,8 +61,8 @@ class CPU
     {
         if (instruction.opcode != Instruction.Opcode.NonBasic) cycleCount += cycles(instruction);
         bool ald, bld;
-        ushort a = read(instruction.a, ald);
-        ushort b = read(instruction.b, bld);
+        ushort a = read(instruction.a);
+        ushort b = read(instruction.b);
         final switch (instruction.opcode) with (Instruction.Opcode) {
         case NonBasic:
             assert(instruction.nonbasic == Instruction.Opcode.NonBasic);
@@ -71,25 +71,25 @@ class CPU
             PC = A;
             break;
         case SET:
-            if (ald) write(instruction.a, a, b);
+            write(instruction.a, a, b);
             break;
         case ADD:
-            if (ald) write(instruction.a, a, cast(ushort) (a + b));
+            write(instruction.a, a, cast(ushort) (a + b));
             if (a + b > ushort.max) O = 0x0001;
             else O = 0;
             break;
         case SUB:
-            if (ald) write(instruction.a, a, cast(ushort) (a - b));
+            write(instruction.a, a, cast(ushort) (a - b));
             if (a - b > ushort.max) O = 0xFFFF;
             else O = 0;
             break;
         case MUL:
-            if (ald) write(instruction.a, a, cast(ushort) (a * b));
+            write(instruction.a, a, cast(ushort) (a * b));
             O = ((a * b) >> 16) & 0xFFFF;
             break;
         case DIV:
             if (b != 0) {
-                if (ald) write(instruction.a, a, cast(ushort) (a / b));
+                write(instruction.a, a, cast(ushort) (a / b));
                 O = ((a << 16) / b) & 0xFFFF;
             } else {
                 write(instruction.a, a, 0);
@@ -97,25 +97,25 @@ class CPU
             }
             break;
         case MOD:
-            if (b == 0 && ald) write(instruction.a, a, 0);
-            else if (ald) write(instruction.a, a, a % b);
+            if (b == 0) write(instruction.a, a, 0);
+            else write(instruction.a, a, a % b);
             break;
         case SHL:
-            if (ald) write(instruction.a, a, cast(ushort) (a << b));
+            write(instruction.a, a, cast(ushort) (a << b));
             O = ((a << b) >> 16) & 0xFFFF;
             break;
         case SHR:
-            if (ald) write(instruction.a, a, cast(ushort) (a >> b));
+            write(instruction.a, a, cast(ushort) (a >> b));
             O = ((a << 16) >> b) & 0xFFFF;
             break;
         case AND:
-            if (ald) write(instruction.a, a, cast(ushort) (a & b));
+            write(instruction.a, a, cast(ushort) (a & b));
             break;
         case BOR:
-            if (ald) write(instruction.a, a, cast(ushort) (a | b));
+            write(instruction.a, a, cast(ushort) (a | b));
             break;
         case XOR:
-            if (ald) write(instruction.a, a, cast(ushort) (a ^ b));
+            write(instruction.a, a, cast(ushort) (a ^ b));
             break;
         case IFE:
             if (a == b) {
@@ -152,7 +152,15 @@ class CPU
         }
     }
 
-    /// Write 
+    /**
+     * Write val to location.
+     * Params:
+     *   location = the Value of where we're writing to.
+     *   p = the value return by calling read on the location.
+     *   val = the value to write.
+     * Notes: if location is a literal, it is ignored.
+     * See: read
+     */
     protected final void write(in Instruction.Value location, in ushort p, in ushort val) @safe
     {
         switch (location) with (Instruction) {
@@ -191,10 +199,14 @@ class CPU
         }
     }
 
-    /// Read word at location.
-    protected final ushort read(in Instruction.Value location, out bool load) pure @safe
+    /**
+     * Read word at location.
+     * If the value uses indirection, the last layer is not performed --
+     * that's left up to write.
+     * See: write
+     */
+    protected final ushort read(in Instruction.Value location) pure @safe
     {
-        load = false;
         switch (location) with (Instruction) {
         case Value.A: return A;
         case Value.B: return B;
@@ -204,29 +216,29 @@ class CPU
         case Value.Z: return Z;
         case Value.I: return I;
         case Value.J: return J;
-        case Value.LDA: load = true; return A;
-        case Value.LDB: load = true; return B;
-        case Value.LDC: load = true; return C;
-        case Value.LDX: load = true; return X;
-        case Value.LDY: load = true; return Y;
-        case Value.LDZ: load = true; return Z;
-        case Value.LDI: load = true; return I;
-        case Value.LDJ: load = true; return J;
-        case Value.LDPCA: load = true; return cast(ushort) (memory[PC++] + A);
-        case Value.LDPCB: load = true; return cast(ushort) (memory[PC++] + B);
-        case Value.LDPCC: load = true; return cast(ushort) (memory[PC++] + C);
-        case Value.LDPCX: load = true; return cast(ushort) (memory[PC++] + X);
-        case Value.LDPCY: load = true; return cast(ushort) (memory[PC++] + Y);
-        case Value.LDPCZ: load = true; return cast(ushort) (memory[PC++] + Z);
-        case Value.LDPCI: load = true; return cast(ushort) (memory[PC++] + I);
-        case Value.LDPCJ: load = true; return cast(ushort) (memory[PC++] + J);
-        case Value.POP: load = true; return SP++;
-        case Value.PEEK: load = true; return SP;
-        case Value.PUSH: load = true; return --SP;
+        case Value.LDA: return A;
+        case Value.LDB: return B;
+        case Value.LDC: return C;
+        case Value.LDX: return X;
+        case Value.LDY: return Y;
+        case Value.LDZ: return Z;
+        case Value.LDI: return I;
+        case Value.LDJ: return J;
+        case Value.LDPCA: return cast(ushort) (memory[PC++] + A);
+        case Value.LDPCB: return cast(ushort) (memory[PC++] + B);
+        case Value.LDPCC: return cast(ushort) (memory[PC++] + C);
+        case Value.LDPCX: return cast(ushort) (memory[PC++] + X);
+        case Value.LDPCY: return cast(ushort) (memory[PC++] + Y);
+        case Value.LDPCZ: return cast(ushort) (memory[PC++] + Z);
+        case Value.LDPCI: return cast(ushort) (memory[PC++] + I);
+        case Value.LDPCJ: return cast(ushort) (memory[PC++] + J);
+        case Value.POP: return SP++;
+        case Value.PEEK: return SP;
+        case Value.PUSH: return --SP;
         case Value.SP: return SP;
         case Value.PC: return PC;
         case Value.O: return O;
-        case Value.LDNXT: load = true; return memory[PC++];
+        case Value.LDNXT: return memory[PC++];
         case Value.NXT: return PC++;
         default:
             assert(location >= Value.LITERAL);
