@@ -85,7 +85,7 @@ class CPU
      * "If any instruction tries to assign a literal value, 
      *  the assignment fails silently."
      */
-    protected final void assign(ref const Instruction.Value location, ushort val) pure @safe
+    protected final void assign(in Instruction.Value location, ushort val) pure @safe
     {
         switch (location) with (Instruction) {
         case Value.A: A = val; break;
@@ -115,11 +115,57 @@ class CPU
         case Value.POP: memory[SP++] = val; break;
         case Value.PEEK: memory[SP] = val; break;
         case Value.PUSH: memory[--SP] = val; break;
-        case Value.LDNXT: memory[PC++] = val; break; 
+        case Value.LDNXT: memory[memory[PC++]] = val; break; 
+        case Value.SP: SP = val; break;
+        case Value.PC: PC = val; break;
+        case Value.O: O = val; break;
         default:
             // Assigning to literal location, ignore.
             break;
         }
+    }
+
+    /// Read word at location.
+    protected final ushort read(in Instruction.Value location)
+    {
+        switch (location) with (Instruction) {
+        case Value.A: return A;
+        case Value.B: return B;
+        case Value.C: return C;
+        case Value.X: return X;
+        case Value.Y: return Y;
+        case Value.Z: return Z;
+        case Value.I: return I;
+        case Value.J: return J;
+        case Value.LDA: return memory[A];
+        case Value.LDB: return memory[B];
+        case Value.LDC: return memory[C];
+        case Value.LDX: return memory[X];
+        case Value.LDY: return memory[Y];
+        case Value.LDZ: return memory[Z];
+        case Value.LDI: return memory[I];
+        case Value.LDJ: return memory[J];
+        case Value.LDPCA: return memory[memory[PC++] + A];
+        case Value.LDPCB: return memory[memory[PC++] + B];
+        case Value.LDPCC: return memory[memory[PC++] + C];
+        case Value.LDPCX: return memory[memory[PC++] + X];
+        case Value.LDPCY: return memory[memory[PC++] + Y];
+        case Value.LDPCZ: return memory[memory[PC++] + Z];
+        case Value.LDPCI: return memory[memory[PC++] + I];
+        case Value.LDPCJ: return memory[memory[PC++] + J];
+        case Value.POP: return memory[SP++];
+        case Value.PEEK: return memory[SP];
+        case Value.PUSH: return memory[--SP];
+        case Value.SP: return SP;
+        case Value.PC: return PC;
+        case Value.O: return O;
+        case Value.LDNXT: return memory[memory[PC++]];
+        case Value.NXT: return memory[PC++];
+        default:
+            assert(location >= Value.LITERAL);
+            return location - Value.LITERAL;
+        }
+        // Never reached.
     }
 }
 
