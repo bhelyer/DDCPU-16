@@ -58,75 +58,101 @@ class CPU
      */
     protected final void execute(ref const Instruction instruction) @safe
     {
-        cycleCount += cycles(instruction);
+        if (instruction.opcode != Instruction.Opcode.NonBasic) cycleCount += cycles(instruction);
+        bool alit, blit;
+        ushort a = read(instruction.a, alit);
+        ushort b = read(instruction.b, blit);
         final switch (instruction.opcode) with (Instruction.Opcode) {
         case NonBasic:
+            assert(instruction.nonbasic == Instruction.Opcode.NonBasic);
+            cycleCount += 2 + cycles(instruction.a) + cycles(instruction.b);
+            memory[--SP] = PC;
+            PC = A;
+            break;
         case SET:
+            if (alit) memory[a] = b;
+            break;
         case ADD:
+            if (alit) memory[a] = cast(ushort) (a + b);
+            if (a + b > ushort.max) O = 0x0001;
+            else O = 0;
+            break;
         case SUB:
+            if (alit) memory[a] = cast(ushort) (a - b);
+            if (a - b > ushort.max) O = 0xFFFF;
+            else O = 0;
+            break;
         case MUL:
+            if (alit) memory[a] = cast(ushort) (a * b);
+            O = ((a * b) >> 16) & 0xFFFF;
+            break;
         case DIV:
+            if (b != 0) {
+                if (alit) memory[a] = cast(ushort) (a / b);
+                O = ((a << 16) / b) & 0xFFFF;
+            } else {
+                memory[a] = 0;
+                O = 0;
+            }
+            break;
         case MOD:
+            if (b == 0 && alit) memory[a] = 0;
+            else if (alit) memory[a] = a % b;
+            break;
         case SHL:
+            if (alit) memory[a] = cast(ushort) (a << b);
+            O = ((a << b) >> 16) & 0xFFFF;
+            break;
         case SHR:
+            if (alit) memory[a] = cast(ushort) (a >> b);
+            O = ((a << 16) >> b) & 0xFFFF;
+            break;
         case AND:
+            if (alit) memory[a] = cast(ushort) (a & b);
+            break;
         case BOR:
+            if (alit) memory[a] = cast(ushort) (a | b);
+            break;
         case XOR:
+            if (alit) memory[a] = cast(ushort) (a ^ b);
+            break;
         case IFE:
+            if (a == b) {
+                Instruction i = decode(memory[PC++]);
+                execute(i);
+            } else {
+                cycleCount++;
+            }
+            break;
         case IFN:
+            if (a != b) {
+                Instruction i = decode(memory[PC++]);
+                execute(i);
+            } else {
+                cycleCount++;
+            }
+            break;
         case IFG:
+            if (a > b) {
+                Instruction i = decode(memory[PC++]);
+                execute(i);
+            } else {
+                cycleCount++;
+            }
+            break;
         case IFB:
+            if ((a & b) != 0) {
+                Instruction i = decode(memory[PC++]);
+                execute(i);
+            } else {
+                cycleCount++;
+            }
             break;
         }
     }
 
-    /** 
-     * Assign val to location. 
-     * "If any instruction tries to assign a literal value, 
-     *  the assignment fails silently."
-     */
-    protected final void assign(in Instruction.Value location, ushort val) pure @safe
-    {
-        switch (location) with (Instruction) {
-        case Value.A: A = val; break;
-        case Value.B: B = val; break;
-        case Value.C: C = val; break;
-        case Value.X: X = val; break;
-        case Value.Y: Y = val; break;
-        case Value.Z: Z = val; break;
-        case Value.I: I = val; break;
-        case Value.J: J = val; break;
-        case Value.LDA: memory[A] = val; break;
-        case Value.LDB: memory[B] = val; break;
-        case Value.LDC: memory[C] = val; break;
-        case Value.LDX: memory[X] = val; break;
-        case Value.LDY: memory[Y] = val; break;
-        case Value.LDZ: memory[Z] = val; break;
-        case Value.LDI: memory[I] = val; break;
-        case Value.LDJ: memory[J] = val; break;
-        case Value.LDPCA: memory[memory[PC++] + A] = val; break;
-        case Value.LDPCB: memory[memory[PC++] + B] = val; break;
-        case Value.LDPCC: memory[memory[PC++] + C] = val; break;
-        case Value.LDPCX: memory[memory[PC++] + X] = val; break;
-        case Value.LDPCY: memory[memory[PC++] + Y] = val; break;
-        case Value.LDPCZ: memory[memory[PC++] + Z] = val; break;
-        case Value.LDPCI: memory[memory[PC++] + I] = val; break;
-        case Value.LDPCJ: memory[memory[PC++] + J] = val; break;
-        case Value.POP: memory[SP++] = val; break;
-        case Value.PEEK: memory[SP] = val; break;
-        case Value.PUSH: memory[--SP] = val; break;
-        case Value.LDNXT: memory[memory[PC++]] = val; break; 
-        case Value.SP: SP = val; break;
-        case Value.PC: PC = val; break;
-        case Value.O: O = val; break;
-        default:
-            // Assigning to literal location, ignore.
-            break;
-        }
-    }
-
-    /// Read word at location.
-    protected final ushort read(in Instruction.Value location)
+    /// Read word at location. Sets literal to true if the value is a literal.
+    protected final ushort read(in Instruction.Value location, out bool literal) pure @safe
     {
         switch (location) with (Instruction) {
         case Value.A: return A;
