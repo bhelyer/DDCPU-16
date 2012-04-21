@@ -12,6 +12,7 @@ class CPU
     ushort SP;  /// Stack pointer.
     ushort O;  /// Overflow.
     ushort[] memory;  /// 0x10000 words of memory.
+    long cycleCount;  /// How many cycles the CPU has run.
 
     invariant()
     {
@@ -47,12 +48,17 @@ class CPU
         while (remainingCycles > 0) {
             Instruction instruction = decode(memory[PC++]);
             remainingCycles--;
-            execute(instruction, remainingCycles);
+            execute(instruction);
         }
     }
 
-    final void execute(ref const Instruction instruction, out int cycles) @safe
+    /**
+     * Execute an instruction.
+     * Increments cycleCount with cycles consumed.
+     */
+    protected final void execute(ref const Instruction instruction) @safe
     {
+        cycleCount += cycles(instruction);
         final switch (instruction.opcode) with (Instruction.Opcode) {
         case NonBasic:
         case SET:
@@ -73,7 +79,51 @@ class CPU
             break;
         }
     }
+
+    /** 
+     * Assign val to location. 
+     * "If any instruction tries to assign a literal value, 
+     *  the assignment fails silently."
+     */
+    protected final void assign(ref const Instruction.Value location, ushort val) pure @safe
+    {
+        switch (location) with (Instruction) {
+        case Value.A: A = val; break;
+        case Value.B: B = val; break;
+        case Value.C: C = val; break;
+        case Value.X: X = val; break;
+        case Value.Y: Y = val; break;
+        case Value.Z: Z = val; break;
+        case Value.I: I = val; break;
+        case Value.J: J = val; break;
+        case Value.LDA: memory[A] = val; break;
+        case Value.LDB: memory[B] = val; break;
+        case Value.LDC: memory[C] = val; break;
+        case Value.LDX: memory[X] = val; break;
+        case Value.LDY: memory[Y] = val; break;
+        case Value.LDZ: memory[Z] = val; break;
+        case Value.LDI: memory[I] = val; break;
+        case Value.LDJ: memory[J] = val; break;
+        case Value.LDPCA: memory[memory[PC++] + A] = val; break;
+        case Value.LDPCB: memory[memory[PC++] + B] = val; break;
+        case Value.LDPCC: memory[memory[PC++] + C] = val; break;
+        case Value.LDPCX: memory[memory[PC++] + X] = val; break;
+        case Value.LDPCY: memory[memory[PC++] + Y] = val; break;
+        case Value.LDPCZ: memory[memory[PC++] + Z] = val; break;
+        case Value.LDPCI: memory[memory[PC++] + I] = val; break;
+        case Value.LDPCJ: memory[memory[PC++] + J] = val; break;
+        case Value.POP: memory[SP++] = val; break;
+        case Value.PEEK: memory[SP] = val; break;
+        case Value.PUSH: memory[--SP] = val; break;
+        case Value.LDNXT: memory[PC++] = val; break; 
+        default:
+            // Assigning to literal location, ignore.
+            break;
+        }
+    }
 }
+
+private:
 
 /// Convert word 'op' into an Instruction.
 Instruction decode(ushort op) pure @safe
@@ -95,6 +145,37 @@ Instruction decode(ushort op) pure @safe
     instruction.b = cast(Instruction.Value) b;
 
     return instruction;
+}
+
+immutable int[Instruction.Opcode.max+1] opcycles = [
+   -1,   // NonBasic
+    1,   // SET
+    2,   // ADD
+    2,   // SUB
+    2,   // MUL
+    3,   // DIV
+    3,   // MOD
+    2,   // SHL
+    2,   // SHR
+    1,   // AND
+    1,   // BOR
+    1,   // XOR
+    2,   // IFE
+    2,   // IFN
+    2,   // IFG
+    2,   // IFB
+];
+
+/// How many cycles does val take to look up?
+int cycles(in Instruction.Value val) pure @safe
+{
+    return ((val > 0x10 && val <= 0x17) || val == 0x1E || val == 0x1F) ? 1 : 0;
+}
+
+/// How many cycles will instruction take (not counting failed IF ops)?
+int cycles(ref const Instruction instruction) pure @safe
+{
+    return opcycles[instruction.opcode] + cycles(instruction.a) + cycles(instruction.b);
 }
 
 /**
