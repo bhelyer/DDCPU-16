@@ -28,7 +28,7 @@ void realmain(string[] args)
     
     while (true) {
         writeln("CYCLES: ", cpu.cycleCount);
-        writefln("A:%s PC:%s SP:%s O = 0x%04X", cpu.A, cpu.PC, cpu.SP, cpu.O);
+        writefln("A:%s B:%s PC:%s SP:%s (%s) O = 0x%04X", cpu.A, cpu.B, cpu.PC, cpu.SP, cpu.memory[cpu.SP], cpu.O);
         if (readln().length == 0) {
             break;
         }
