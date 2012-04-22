@@ -88,7 +88,7 @@ class CPU
             break;
         case SUB:
             if (a.p) *a.p = cast(ushort) (a.v - b.v);
-            if (a.v - b.v > ushort.max) O = 0xFFFF;
+            if (a.v - b.v < 0) O = 0xFFFF;
             else O = 0;
             break;
         case MUL:
