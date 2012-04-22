@@ -67,7 +67,6 @@ class CPU
     protected final void execute(ref const Instruction instruction) @safe
     {
         if (instruction.opcode != Instruction.Opcode.NonBasic) cycleCount += cycles(instruction);
-        bool ald, bld;
         Word a = read(instruction.a);
         Word b = read(instruction.b);
         final switch (instruction.opcode) with (Instruction.Opcode) {
@@ -129,34 +128,42 @@ class CPU
             if (a.p) *a.p = cast(ushort) (a.v ^ b.v);
             break;
         case IFE:
+            Instruction i = decode(memory[PC++]);
             if (a.v == b.v) {
-                Instruction i = decode(memory[PC++]);
                 execute(i);
             } else {
+                read(i.a);
+                read(i.b);
                 cycleCount++;
             }
             break;
         case IFN:
+            Instruction i = decode(memory[PC++]);
             if (a.v != b.v) {
-                Instruction i = decode(memory[PC++]);
                 execute(i);
             } else {
+                read(i.a);
+                read(i.b);
                 cycleCount++;
             }
             break;
         case IFG:
+            Instruction i = decode(memory[PC++]);
             if (a.v > b.v) {
-                Instruction i = decode(memory[PC++]);
                 execute(i);
             } else {
+                read(i.a);
+                read(i.b);
                 cycleCount++;
             }
             break;
         case IFB:
+            Instruction i = decode(memory[PC++]);
             if ((a.v & b.v) != 0) {
-                Instruction i = decode(memory[PC++]);
                 execute(i);
             } else {
+                read(i.a);
+                read(i.b);
                 cycleCount++;
             }
             break;
@@ -174,14 +181,14 @@ class CPU
         case Value.Z: return Word(Z, &Z);
         case Value.I: return Word(I, &I);
         case Value.J: return Word(J, &J);
-        case Value.LDA: return Word(A, &memory[A]);
-        case Value.LDB: return Word(B, &memory[B]);
-        case Value.LDC: return Word(C, &memory[C]);
-        case Value.LDX: return Word(X, &memory[X]);
-        case Value.LDY: return Word(Y, &memory[Y]);
-        case Value.LDZ: return Word(Z, &memory[Z]);
-        case Value.LDI: return Word(I, &memory[I]);
-        case Value.LDJ: return Word(J, &memory[J]);
+        case Value.LDA: return Word(memory[A], &memory[A]);
+        case Value.LDB: return Word(memory[B], &memory[B]);
+        case Value.LDC: return Word(memory[C], &memory[C]);
+        case Value.LDX: return Word(memory[X], &memory[X]);
+        case Value.LDY: return Word(memory[Y], &memory[Y]);
+        case Value.LDZ: return Word(memory[Z], &memory[Z]);
+        case Value.LDI: return Word(memory[I], &memory[I]);
+        case Value.LDJ: return Word(memory[J], &memory[J]);
         case Value.LDPCA: return Word(memory[memory[PC++] + A], &memory[memory[PC++] + A]);
         case Value.LDPCB: return Word(memory[memory[PC++] + B], &memory[memory[PC++] + B]);
         case Value.LDPCC: return Word(memory[memory[PC++] + C], &memory[memory[PC++] + C]);
