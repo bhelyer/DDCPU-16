@@ -1,7 +1,5 @@
 module dcpu16.cpu;
 
-import std.string;
-
 
 /**
  * Holds the state of a DCPU-16 instance.
@@ -54,11 +52,6 @@ class CPU
             execute(instruction);
             remainingCycles -= cast(int) (cycleCount - cc);
         }
-    }
-
-    override string toString()
-    {
-        return format("PC=%s O=%s SP=%s\nA=%s B=%s C=%s X=%s Y=%s Z=%s I=%s J=%s", PC, O, SP, A, B, C, X, Y, Z, I, J);
     }
 
     /**
