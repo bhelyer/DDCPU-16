@@ -9,7 +9,7 @@ class CPU
     enum MEMORY_SIZE = 0x10000;
     ushort A, B, C, X, Y, Z, I, J;  /// General purpose registers.
     ushort PC;  /// Program counter.
-    ushort SP = 0xFFFF;  /// Stack pointer.
+    ushort SP;  /// Stack pointer.
     ushort O;  /// Overflow.
     ushort[] memory;  /// 0x10000 words of memory.
     long cycleCount;  /// How many cycles the CPU has run.
