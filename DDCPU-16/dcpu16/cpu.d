@@ -1,5 +1,7 @@
 module dcpu16.cpu;
 
+import std.string;
+
 
 /**
  * Holds the state of a DCPU-16 instance.
@@ -53,6 +55,11 @@ class CPU
         }
     }
 
+    override string toString()
+    {
+        return format("PC=%s O=%s SP=%s\nA=%s B=%s C=%s X=%s Y=%s Z=%s I=%s J=%s", PC, O, SP, A, B, C, X, Y, Z, I, J);
+    }
+
     /**
      * Execute an instruction.
      * Increments cycleCount with cycles consumed.
@@ -65,7 +72,7 @@ class CPU
         Word b = read(instruction.b);
         final switch (instruction.opcode) with (Instruction.Opcode) {
         case NonBasic:
-            assert(instruction.nonbasic == Instruction.Opcode.NonBasic);
+            assert(instruction.nonbasic == Instruction.NonBasicOpcode.JSR);
             cycleCount += 2 + cycles(instruction.a) + cycles(instruction.b);
             memory[--SP] = PC;
             PC = A;
@@ -189,8 +196,8 @@ class CPU
         case Value.SP: return Word(SP, &SP);
         case Value.PC: return Word(PC, &PC);
         case Value.O: return Word(O, &O);
-        case Value.LDNXT: auto w = Word(memory[PC], &memory[PC]); PC++; return w;
-        case Value.NXT: return Word(PC++, null);
+        case Value.LDNXT: auto w = Word(memory[memory[PC]], &memory[memory[PC]]); PC++; return w;
+        case Value.NXT: return Word(memory[PC++], null);
         default:
             assert(location >= Value.LITERAL);
             return Word(location - Value.LITERAL, null);
@@ -208,6 +215,7 @@ struct Word
     ushort* p;
 }
 
+import std.stdio;
 /// Convert word 'op' into an Instruction.
 Instruction decode(ushort op) pure @safe
 {
