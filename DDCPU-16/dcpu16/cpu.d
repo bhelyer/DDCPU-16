@@ -231,7 +231,6 @@ struct Word
     ushort* p;
 }
 
-import std.stdio;
 /// Convert word 'op' into an Instruction.
 Instruction decode(ushort op) pure @safe
 {
