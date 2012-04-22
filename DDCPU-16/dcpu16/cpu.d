@@ -42,8 +42,9 @@ class CPU
     /**
      * Run the CPU for a number of cycles.
      * The number is a minimum, more cycles may be run than given.
+     * Returns: the actual number of cycles ran.
      */
-    final void run(in int cycles) @safe
+    final int run(in int cycles) @safe
     {
         int remainingCycles = cycles;
         while (remainingCycles > 0) {
@@ -52,6 +53,7 @@ class CPU
             execute(instruction);
             remainingCycles -= cast(int) (cycleCount - cc);
         }
+        return remainingCycles + cycles;
     }
 
     /**

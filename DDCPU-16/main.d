@@ -13,26 +13,26 @@ void main(string[] args)
     } catch (Throwable t) {
         writeln("An exception halted execution: %s", t);
     }
-    writeln("Press enter to exit.");
-    readln();
 }
 
 void realmain(string[] args)
 {
-    auto cpu = new CPU();
-
-    ushort[] prog;
-    if (args.length > 1) {
-        prog = cast(ushort[]) read(args[1]);
-    } else {
-        prog = [0x7c01, 0x0030, 0x7de1, 0x1000, 0x0020, 0x7803, 0x1000, 0xc00d,
-                0x7dc1, 0x001a, 0xa861, 0x7c01, 0x2000, 0x2161, 0x2000, 0x8463,
-                0x806d, 0x7dc1, 0x000d, 0x9031, 0x7c10, 0x0018, 0x7dc1, 0x001a,
-                0x9037, 0x61c1, 0x7dc1, 0x001a];
+    if (args.length == 1) {
+        writeln("usage: ", args[0], " <image file>");
+        return;
     }
+
+    auto cpu = new CPU();
+    auto prog = cast(ushort[]) read(args[1]);
     cpu.load(prog);
     
     while (true) {
-        cpu.run(100_000/60);
+        writeln("CYCLES: ", cpu.cycleCount);
+        writefln("A:%s PC:%s SP:%s O = 0x%04X", cpu.A, cpu.PC, cpu.SP, cpu.O);
+        if (readln().length == 0) {
+            break;
+        }
+        
+        cpu.run(1);
     }
 }
