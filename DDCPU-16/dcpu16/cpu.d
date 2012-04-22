@@ -11,7 +11,7 @@ class CPU
     enum MEMORY_SIZE = 0x10000;
     ushort A, B, C, X, Y, Z, I, J;  /// General purpose registers.
     ushort PC;  /// Program counter.
-    ushort SP;  /// Stack pointer.
+    ushort SP = 0xFFFF;  /// Stack pointer.
     ushort O;  /// Overflow.
     ushort[] memory;  /// 0x10000 words of memory.
     long cycleCount;  /// How many cycles the CPU has run.
@@ -66,15 +66,21 @@ class CPU
      */
     protected final void execute(ref const Instruction instruction) @safe
     {
-        if (instruction.opcode != Instruction.Opcode.NonBasic) cycleCount += cycles(instruction);
-        Word a = read(instruction.a);
-        Word b = read(instruction.b);
-        final switch (instruction.opcode) with (Instruction.Opcode) {
-        case NonBasic:
+        Word a, b;
+        if (instruction.opcode != Instruction.Opcode.NonBasic) {
+            cycleCount += cycles(instruction);
+            a = read(instruction.a);
+            b = read(instruction.b);
+        } else {
+            a = read(instruction.a);
             assert(instruction.nonbasic == Instruction.NonBasicOpcode.JSR);
-            cycleCount += 2 + cycles(instruction.a) + cycles(instruction.b);
+            cycleCount += 2 + cycles(instruction.a);
+        }
+
+        final switch (instruction.opcode) with (Instruction.Opcode) {
+        case NonBasic:  // This just does JSR for now, as it's the only non-basic OP.
             memory[--SP] = PC;
-            PC = A;
+            PC = a.v;
             break;
         case SET:
             if (a.p) *a.p = b.v;
@@ -132,8 +138,7 @@ class CPU
             if (a.v == b.v) {
                 execute(i);
             } else {
-                read(i.a);
-                read(i.b);
+                skip(i);
                 cycleCount++;
             }
             break;
@@ -142,8 +147,7 @@ class CPU
             if (a.v != b.v) {
                 execute(i);
             } else {
-                read(i.a);
-                read(i.b);
+                skip(i);
                 cycleCount++;
             }
             break;
@@ -152,8 +156,7 @@ class CPU
             if (a.v > b.v) {
                 execute(i);
             } else {
-                read(i.a);
-                read(i.b);
+                skip(i);
                 cycleCount++;
             }
             break;
@@ -162,8 +165,7 @@ class CPU
             if ((a.v & b.v) != 0) {
                 execute(i);
             } else {
-                read(i.a);
-                read(i.b);
+                skip(i);
                 cycleCount++;
             }
             break;
@@ -211,6 +213,19 @@ class CPU
         }
         // Never reached.
     }
+
+    /// Advance the PC past the given instruction.
+    protected final void skip(ref const Instruction i) @safe
+    {
+        if (i.opcode != Instruction.Opcode.NonBasic) {
+            read(i.a);
+            read(i.b);
+        } else {
+            assert(i.nonbasic == Instruction.NonBasicOpcode.JSR);
+            read(i.a);
+            cycleCount += 2 + cycles(i.a);
+        }
+    }
 }
 
 private:
@@ -234,6 +249,9 @@ Instruction decode(ushort op) pure @safe
             throw new Exception("no support for any non-basic opcode except for JSR.");
         }
         instruction.nonbasic = Instruction.NonBasicOpcode.JSR;
+        ushort a = (op & 0b111111_000000_0000) >> 10;
+        instruction.a = cast(Instruction.Value) a;
+        return instruction;
     } else {
         ushort a = (op & 0b000000_111111_0000) >> 4;
         instruction.a = cast(Instruction.Value) a;
