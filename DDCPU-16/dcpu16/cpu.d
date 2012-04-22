@@ -42,7 +42,8 @@ class CPU
     }
 
     /**
-     * Run the CPU for a certain number of cycles.
+     * Run the CPU for a number of cycles.
+     * The number is a minimum, more cycles may be run than given.
      */
     final void run(in int cycles) @safe
     {
@@ -199,9 +200,9 @@ class CPU
         case Value.LDPCZ: PC++; return Word(memory[memory[PC] + Z], &memory[memory[PC] + Z]);
         case Value.LDPCI: PC++; return Word(memory[memory[PC] + I], &memory[memory[PC] + I]);
         case Value.LDPCJ: PC++; return Word(memory[memory[PC] + J], &memory[memory[PC] + J]);
-        case Value.POP: auto w = Word(SP, &SP); SP++; return w;
-        case Value.PEEK: return Word(SP, &SP);
-        case Value.PUSH: --SP; return Word(SP, &SP);
+        case Value.POP: auto w = Word(memory[SP], &memory[SP]); SP++; return w;
+        case Value.PEEK: return Word(memory[SP], &memory[SP]);
+        case Value.PUSH: --SP; return Word(memory[SP], &memory[SP]);
         case Value.SP: return Word(SP, &SP);
         case Value.PC: return Word(PC, &PC);
         case Value.O: return Word(O, &O);
