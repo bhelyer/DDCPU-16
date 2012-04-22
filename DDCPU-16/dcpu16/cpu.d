@@ -61,8 +61,8 @@ class CPU
     {
         if (instruction.opcode != Instruction.Opcode.NonBasic) cycleCount += cycles(instruction);
         bool ald, bld;
-        ushort a = read(instruction.a);
-        ushort b = read(instruction.b);
+        Word a = read(instruction.a);
+        Word b = read(instruction.b);
         final switch (instruction.opcode) with (Instruction.Opcode) {
         case NonBasic:
             assert(instruction.nonbasic == Instruction.Opcode.NonBasic);
@@ -71,54 +71,58 @@ class CPU
             PC = A;
             break;
         case SET:
-            write(instruction.a, a, b);
+            if (a.p) *a.p = b.v;
             break;
         case ADD:
-            write(instruction.a, a, cast(ushort) (a + b));
-            if (a + b > ushort.max) O = 0x0001;
+            if (a.p) *a.p = cast(ushort) (a.v + b.v);
+            if (a.v + b.v > ushort.max) O = 0x0001;
             else O = 0;
             break;
         case SUB:
-            write(instruction.a, a, cast(ushort) (a - b));
-            if (a - b > ushort.max) O = 0xFFFF;
+            if (a.p) *a.p = cast(ushort) (a.v - b.v);
+            if (a.v - b.v > ushort.max) O = 0xFFFF;
             else O = 0;
             break;
         case MUL:
-            write(instruction.a, a, cast(ushort) (a * b));
-            O = ((a * b) >> 16) & 0xFFFF;
+            if (a.p) *a.p = cast(ushort) (a.v * b.v);
+            O = ((a.v * b.v) >> 16) & 0xFFFF;
             break;
         case DIV:
-            if (b != 0) {
-                write(instruction.a, a, cast(ushort) (a / b));
-                O = ((a << 16) / b) & 0xFFFF;
+            if (b.v != 0 && a.p) {
+                *a.p = cast(ushort) (a.v / b.v);
+                O = ((a.v << 16) / b.v) & 0xFFFF;
+            } else if (a.p) {
+                *a.p = 0;
+                O = 0;
             } else {
-                write(instruction.a, a, 0);
                 O = 0;
             }
             break;
         case MOD:
-            if (b == 0) write(instruction.a, a, 0);
-            else write(instruction.a, a, a % b);
+            if (a.p) {
+                if (b.v == 0) *a.p = 0;
+                else *a.p = a.v % b.v;
+            }
             break;
         case SHL:
-            write(instruction.a, a, cast(ushort) (a << b));
-            O = ((a << b) >> 16) & 0xFFFF;
+            if (a.p) *a.p = cast(ushort) (a.v << b.v);
+            O = ((a.v << b.v) >> 16) & 0xFFFF;
             break;
         case SHR:
-            write(instruction.a, a, cast(ushort) (a >> b));
-            O = ((a << 16) >> b) & 0xFFFF;
+            if (a.p) *a.p = cast(ushort) (a.v >> b.v);
+            O = ((a.v << 16) >> b.v) & 0xFFFF;
             break;
         case AND:
-            write(instruction.a, a, cast(ushort) (a & b));
+            if (a.p) *a.p = cast(ushort) (a.v & b.v);
             break;
         case BOR:
-            write(instruction.a, a, cast(ushort) (a | b));
+            if (a.p) *a.p = cast(ushort) (a.v | b.v);
             break;
         case XOR:
-            write(instruction.a, a, cast(ushort) (a ^ b));
+            if (a.p) *a.p = cast(ushort) (a.v ^ b.v);
             break;
         case IFE:
-            if (a == b) {
+            if (a.v == b.v) {
                 Instruction i = decode(memory[PC++]);
                 execute(i);
             } else {
@@ -126,7 +130,7 @@ class CPU
             }
             break;
         case IFN:
-            if (a != b) {
+            if (a.v != b.v) {
                 Instruction i = decode(memory[PC++]);
                 execute(i);
             } else {
@@ -134,7 +138,7 @@ class CPU
             }
             break;
         case IFG:
-            if (a > b) {
+            if (a.v > b.v) {
                 Instruction i = decode(memory[PC++]);
                 execute(i);
             } else {
@@ -142,7 +146,7 @@ class CPU
             }
             break;
         case IFB:
-            if ((a & b) != 0) {
+            if ((a.v & b.v) != 0) {
                 Instruction i = decode(memory[PC++]);
                 execute(i);
             } else {
@@ -152,103 +156,57 @@ class CPU
         }
     }
 
-    /**
-     * Write val to location.
-     * Params:
-     *   location = the Value of where we're writing to.
-     *   p = the value return by calling read on the location.
-     *   val = the value to write.
-     * Notes: if location is a literal, it is ignored.
-     * See: read
-     */
-    protected final void write(in Instruction.Value location, in ushort p, in ushort val) @safe
+    protected final Word read(in Instruction.Value location) pure @safe
     {
         switch (location) with (Instruction) {
-        case Value.A: A = val; break;
-        case Value.B: B = val; break;
-        case Value.C: C = val; break;
-        case Value.X: X = val; break;
-        case Value.Y: Y = val; break;
-        case Value.Z: Z = val; break;
-        case Value.I: I = val; break;
-        case Value.J: J = val; break;
-        case Value.LDA: memory[p] = val; break;
-        case Value.LDB: memory[p] = val; break;
-        case Value.LDC: memory[p] = val; break;
-        case Value.LDX: memory[p] = val; break;
-        case Value.LDY: memory[p] = val; break;
-        case Value.LDZ: memory[p] = val; break;
-        case Value.LDI: memory[p] = val; break;
-        case Value.LDJ: memory[p] = val; break;
-        case Value.LDPCA: memory[p] = val; break;
-        case Value.LDPCB: memory[p] = val; break;
-        case Value.LDPCC: memory[p] = val; break;
-        case Value.LDPCX: memory[p] = val; break;
-        case Value.LDPCY: memory[p] = val; break;
-        case Value.LDPCZ: memory[p] = val; break;
-        case Value.LDPCI: memory[p] = val; break;
-        case Value.LDPCJ: memory[p] = val; break;
-        case Value.POP: memory[p] = val; break;
-        case Value.PEEK: memory[p] = val; break;
-        case Value.PUSH: memory[p] = val; break;
-        case Value.SP: SP = val; break;
-        case Value.PC: PC = val; break;
-        case Value.O: O = val; break;
-        case Value.LDNXT: memory[p] = val; break;
-        default: break;
-        }
-    }
-
-    /**
-     * Read word at location.
-     * If the value uses indirection, the last layer is not performed --
-     * that's left up to write.
-     * See: write
-     */
-    protected final ushort read(in Instruction.Value location) pure @safe
-    {
-        switch (location) with (Instruction) {
-        case Value.A: return A;
-        case Value.B: return B;
-        case Value.C: return C;
-        case Value.X: return X;
-        case Value.Y: return Y;
-        case Value.Z: return Z;
-        case Value.I: return I;
-        case Value.J: return J;
-        case Value.LDA: return A;
-        case Value.LDB: return B;
-        case Value.LDC: return C;
-        case Value.LDX: return X;
-        case Value.LDY: return Y;
-        case Value.LDZ: return Z;
-        case Value.LDI: return I;
-        case Value.LDJ: return J;
-        case Value.LDPCA: return cast(ushort) (memory[PC++] + A);
-        case Value.LDPCB: return cast(ushort) (memory[PC++] + B);
-        case Value.LDPCC: return cast(ushort) (memory[PC++] + C);
-        case Value.LDPCX: return cast(ushort) (memory[PC++] + X);
-        case Value.LDPCY: return cast(ushort) (memory[PC++] + Y);
-        case Value.LDPCZ: return cast(ushort) (memory[PC++] + Z);
-        case Value.LDPCI: return cast(ushort) (memory[PC++] + I);
-        case Value.LDPCJ: return cast(ushort) (memory[PC++] + J);
-        case Value.POP: return SP++;
-        case Value.PEEK: return SP;
-        case Value.PUSH: return --SP;
-        case Value.SP: return SP;
-        case Value.PC: return PC;
-        case Value.O: return O;
-        case Value.LDNXT: return memory[PC++];
-        case Value.NXT: return PC++;
+        case Value.A: return Word(A, &A);
+        case Value.B: return Word(B, &B);
+        case Value.C: return Word(C, &C);
+        case Value.X: return Word(X, &X);
+        case Value.Y: return Word(Y, &Y);
+        case Value.Z: return Word(Z, &Z);
+        case Value.I: return Word(I, &I);
+        case Value.J: return Word(J, &J);
+        case Value.LDA: return Word(A, &memory[A]);
+        case Value.LDB: return Word(B, &memory[B]);
+        case Value.LDC: return Word(C, &memory[C]);
+        case Value.LDX: return Word(X, &memory[X]);
+        case Value.LDY: return Word(Y, &memory[Y]);
+        case Value.LDZ: return Word(Z, &memory[Z]);
+        case Value.LDI: return Word(I, &memory[I]);
+        case Value.LDJ: return Word(J, &memory[J]);
+        case Value.LDPCA: return Word(memory[memory[PC++] + A], &memory[memory[PC++] + A]);
+        case Value.LDPCB: return Word(memory[memory[PC++] + B], &memory[memory[PC++] + B]);
+        case Value.LDPCC: return Word(memory[memory[PC++] + C], &memory[memory[PC++] + C]);
+        case Value.LDPCX: return Word(memory[memory[PC++] + X], &memory[memory[PC++] + X]);
+        case Value.LDPCY: return Word(memory[memory[PC++] + Y], &memory[memory[PC++] + Y]);
+        case Value.LDPCZ: return Word(memory[memory[PC++] + Z], &memory[memory[PC++] + Z]);
+        case Value.LDPCI: return Word(memory[memory[PC++] + I], &memory[memory[PC++] + I]);
+        case Value.LDPCJ: return Word(memory[memory[PC++] + J], &memory[memory[PC++] + J]);
+        case Value.POP: auto w = Word(SP, &SP); SP++; return w;
+        case Value.PEEK: return Word(SP, &SP);
+        case Value.PUSH: --SP; return Word(SP, &SP);
+        case Value.SP: return Word(SP, &SP);
+        case Value.PC: return Word(PC, &PC);
+        case Value.O: return Word(O, &O);
+        case Value.LDNXT: auto w = Word(memory[PC], &memory[PC]); PC++; return w;
+        case Value.NXT: return Word(PC++, null);
         default:
             assert(location >= Value.LITERAL);
-            return location - Value.LITERAL;
+            return Word(location - Value.LITERAL, null);
         }
         // Never reached.
     }
 }
 
 private:
+
+/// A locations value and where to write to if you can write to it.
+struct Word
+{
+    ushort v;
+    ushort* p;
+}
 
 /// Convert word 'op' into an Instruction.
 Instruction decode(ushort op) pure @safe
