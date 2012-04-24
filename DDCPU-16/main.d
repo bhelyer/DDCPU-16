@@ -1,5 +1,6 @@
 module main;
 
+import std.datetime;
 import std.file;
 import std.intrinsic;
 import std.stdio;
@@ -10,14 +11,16 @@ import siege.siege;
 
 import dcpu16.cpu;
 
+enum CLOCKSPEED = 100_000;  // In hertz
+enum FPS = 30;
 enum SCALING = 4;
 enum TW = 4 * SCALING;  // tile width
 enum TH = 8 * SCALING;  // tile height
 enum SCREENBASE = 0x8000;
 enum FONTBASE = 0x8180;
 enum BACKGROUND = 0x8280;
-enum WIDTH = 32;
-enum HEIGHT = 12;
+enum WIDTH = 32;  // in tiles
+enum HEIGHT = 12; // in tiles
 enum BORDERWIDTH = 4 * SCALING;
 enum SWIDTH = WIDTH * TW + BORDERWIDTH * 2;
 enum SHEIGHT = HEIGHT * TH + BORDERWIDTH * 2;
@@ -60,8 +63,9 @@ void realmain(string[] args)
     bool blink = false; 
     long lastBlinkToggle;
     while (sgcore.loop()) {
+        SysTime a = Clock.currTime();
         draw.clear();  // The texture won't render without this. SIEGE bug.
-        cpu.run(100_000/60);
+        cpu.run(CLOCKSPEED/FPS);
 
         cpu.render(pixels, blink);
         texture.data(SWIDTH, SHEIGHT, 32, pixels);
@@ -69,11 +73,15 @@ void realmain(string[] args)
         window.swapBuffers();
 
         // A magical cycle count, that's Close Enough (tm) to the emulator on 0x10co.de.
-        if ((cpu.cycleCount - lastBlinkToggle) > 50_000) {
+        if ((cpu.cycleCount - lastBlinkToggle) > 100_000) {
             blink = !blink;
             lastBlinkToggle = cpu.cycleCount;
         }
-        Thread.sleep(dur!"msecs"(16));
+        SysTime b = Clock.currTime();
+        Duration delta = b - a;
+        if (delta < dur!"msecs"(1000/FPS)) {
+            Thread.sleep(dur!"msecs"(1000/FPS) - delta);
+        }
     }
 }
 
