@@ -57,7 +57,6 @@ void realmain(string[] args)
 
     auto texture = new Texture(SWIDTH, SHEIGHT, 32);
 
-    bool blink = false; 
     long lastBlinkToggle;
     while (sgcore.loop()) {
         SysTime a = Clock.currTime();
@@ -68,6 +67,11 @@ void realmain(string[] args)
         texture.data(SWIDTH, SHEIGHT, 32, display.texture);
         texture.draw();
         window.swapBuffers();
+
+        if (cpu.cycleCount - lastBlinkToggle >= 100_000) {
+            display.blink = !display.blink;
+            lastBlinkToggle = cpu.cycleCount;
+        }
 
         SysTime b = Clock.currTime();
         Duration delta = b - a;

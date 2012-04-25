@@ -33,6 +33,7 @@ class Display : IHardware
     ushort vramBase;
     ushort userFont;
     ushort userPalette;
+    bool blink;
 
     this()
     {
@@ -135,7 +136,7 @@ class Display : IHardware
                 size_t bit = (0x0100_0000 >> cx*8) << cy;
 
                 // Use the appropriate colour.
-                if (chr & bit) {
+                if (chr & bit && !(cblink && blink)) {
                     px = colour((c & 0xF000) >> 12);
                 } else {
                     px = colour((c & 0x0F00) >> 8);
