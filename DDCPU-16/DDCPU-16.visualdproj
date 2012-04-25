@@ -197,6 +197,5 @@
   </Folder>
   <File path="ddcpu.def" />
   <File path="main.d" />
-  <File path="ui.d" />
  </Folder>
 </DProject>
