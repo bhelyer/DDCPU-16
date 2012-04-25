@@ -10,39 +10,91 @@ import core.thread;
 import siege.siege;
 
 import dcpu16.cpu;
+import ui;
 
 enum CLOCKSPEED = 100_000;  // In hertz
-enum FPS = 30;
+enum FPS = 60;
 enum SCALING = 4;
 enum TW = 4 * SCALING;  // tile width
 enum TH = 8 * SCALING;  // tile height
 enum SCREENBASE = 0x8000;
 enum FONTBASE = 0x8180;
 enum BACKGROUND = 0x8280;
+enum KEYBUFFER = 0x9000;
+enum LASTKEY = 0x9010;
 enum WIDTH = 32;  // in tiles
 enum HEIGHT = 12; // in tiles
 enum BORDERWIDTH = 4 * SCALING;
 enum SWIDTH = WIDTH * TW + BORDERWIDTH * 2;
 enum SHEIGHT = HEIGHT * TH + BORDERWIDTH * 2;
 
+class Controller : Entity
+{
+    CPU cpu;
+
+    this(CPU cpu)
+    {
+        this.cpu = cpu;
+    }
+
+    version (none) final override void evKeyboardKeyPress(uint k)
+    {
+        version (none) if (k >= 'A' && k <= 'Z') {
+            return;  // Handled by the CharPress handler.
+        }
+        addKey(cast(ushort) k);
+    }
+
+    version (all) final override void evKeyboardCharPress(dchar c)
+    {
+        writeln(c);
+        addKey(cast(ushort) c);
+    }
+
+    protected final addKey(ushort k)
+    {
+        size_t i = 0x9000;
+        if (cpu.memory[LASTKEY] >= 0x9000 && cpu.memory[LASTKEY] <= 0x900F) {
+            i = cpu.memory[LASTKEY];
+        }
+        size_t start = i;
+
+        do {
+            if (cpu.memory[i] == 0) {
+                cpu.memory[i] = k;
+                cpu.memory[LASTKEY] = cast(ushort) i;
+                break;
+            }
+            i++;
+            if (i > 0x900F) {
+                i = 0x9000;
+            }
+        } while (i != start);
+    }
+}
+
 void main(string[] args)
 {
     try {
         realmain(args);
     } catch (Throwable t) {
-        writeln("An exception halted execution: %s", t);
+        writefln("An exception halted execution: %s", t);
+        readln();
     }
 }
 
 void realmain(string[] args)
 {
+    string rom;
     if (args.length == 1) {
-        writeln("usage: ", args[0], " <image file>");
-        return;
+        rom = browseForFile();
+        writeln(rom);
+    } else {
+        rom = args[1];
     }
 
     auto cpu = new CPU();
-    auto prog = cast(ushort[]) read(args[1]);
+    auto prog = cast(ushort[]) read(rom);
     cpu.load(prog);
 
     try {
@@ -62,6 +114,7 @@ void realmain(string[] args)
 
     bool blink = false; 
     long lastBlinkToggle;
+    auto controller = new Controller(cpu);
     while (sgcore.loop()) {
         SysTime a = Clock.currTime();
         draw.clear();  // The texture won't render without this. SIEGE bug.
@@ -82,6 +135,7 @@ void realmain(string[] args)
         if (delta < dur!"msecs"(1000/FPS)) {
             Thread.sleep(dur!"msecs"(1000/FPS) - delta);
         }
+        cpu.interrupt(0);
     }
 }
 

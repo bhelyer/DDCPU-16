@@ -10,7 +10,8 @@ class CPU
     ushort A, B, C, X, Y, Z, I, J;  /// General purpose registers.
     ushort PC;  /// Program counter.
     ushort SP;  /// Stack pointer.
-    ushort O;  /// Overflow.
+    ushort EX;  /// Extra/Excess.
+    ushort IA;  /// Interrupt Address.
     ushort[] memory;  /// 0x10000 words of memory.
     long cycleCount;  /// How many cycles the CPU has run.
 
@@ -56,6 +57,16 @@ class CPU
         return remainingCycles + cycles;
     }
 
+    final void interrupt(ushort message) @safe
+    {
+        if (IA != 0) {
+            memory[--SP] = PC;
+            memory[--SP] = A;
+            PC = IA;
+            A = message;
+        }
+    }
+
     /**
      * Execute an instruction.
      * Increments cycleCount with cycles consumed.
@@ -63,112 +74,155 @@ class CPU
     protected final void execute(ref const Instruction instruction) @safe
     {
         Word a, b;
-        if (instruction.opcode != Instruction.Opcode.NonBasic) {
-            cycleCount += cycles(instruction);
-            a = read(instruction.a);
-            b = read(instruction.b);
-        } else {
-            a = read(instruction.a);
-            assert(instruction.nonbasic == Instruction.NonBasicOpcode.JSR);
-            cycleCount += 2 + cycles(instruction.a);
+        void condition(bool delegate() @safe dg) 
+        {
+            Instruction i = decode(memory[PC++]);
+            if (dg()) {
+                execute(i);
+            } else {
+                skip(i);
+                cycleCount++;
+            }
         }
 
-        final switch (instruction.opcode) with (Instruction.Opcode) {
-        case NonBasic:  // This just does JSR for now, as it's the only non-basic OP.
-            memory[--SP] = PC;
-            PC = a.v;
+        if (instruction.opcode != Instruction.Opcode.Special) {
+            a = read(instruction.a, true);
+            b = read(instruction.b, false);
+        } else {
+            a = read(instruction.a, true);
+        }
+        cycleCount += cycles(instruction);
+
+        switch (instruction.opcode) with (Instruction.Opcode) {
+        case Special:
+            switch (instruction.special) with (Instruction.SpecialOpcode) {
+            case JSR:
+                memory[--SP] = PC;
+                PC = a.v;
+                break;
+            case INT:
+                interrupt(a.v);
+                break;
+            case ING:
+                if (a.p) *a.p = IA;
+                break;
+            case INS:
+                IA = a.v;
+                break;
+            case HWN:
+                if (a.p) *a.p = 0;
+                break;
+            case HWQ:
+                A = B = C = X = Y = 0;
+                break;
+            case HWI:
+                break;
+            default:
+                ushort fff = instruction.special;
+                assert(false);
+            }
             break;
         case SET:
-            if (a.p) *a.p = b.v;
+            if (b.p) *b.p = a.v;
             break;
         case ADD:
-            if (a.p) *a.p = cast(ushort) (a.v + b.v);
-            if (a.v + b.v > ushort.max) O = 0x0001;
-            else O = 0;
+            if (b.p) *b.p = cast(ushort) (b.v + a.v);
+            if (b.v + a.v > ushort.max) EX = 0x0001;
+            else EX = 0;
             break;
         case SUB:
-            if (a.p) *a.p = cast(ushort) (a.v - b.v);
-            if (a.v - b.v < 0) O = 0xFFFF;
-            else O = 0;
+            if (b.p) *b.p = cast(ushort) (b.v - a.v);
+            if (b.v - a.v < 0) EX = 0xFFFF;
+            else EX = 0;
             break;
         case MUL:
-            if (a.p) *a.p = cast(ushort) (a.v * b.v);
-            O = ((a.v * b.v) >> 16) & 0xFFFF;
+            if (b.p) *b.p = cast(ushort) (b.v * a.v);
+            EX = ((b.v * a.v) >> 16) & 0xFFFF;
+            break;
+        case MLI:
+            if (b.p) *b.p = cast(ushort) (cast(short) b.v * cast(short) a.v);
+            EX = ((b.v * a.v) >> 16) & 0xFFFF;
             break;
         case DIV:
-            if (b.v != 0 && a.p) {
-                *a.p = cast(ushort) (a.v / b.v);
-                O = ((a.v << 16) / b.v) & 0xFFFF;
-            } else if (a.p) {
-                *a.p = 0;
-                O = 0;
+            if (a.v != 0 && b.p) {
+                *b.p = cast(ushort) (b.v / a.v);
+                EX = ((b.v << 16) / a.v) & 0xFFFF;
+            } else if (b.p) {
+                *b.p = 0;
+                EX = 0;
             } else {
-                O = 0;
+                EX = 0;
+            }
+            break;
+        case DVI:
+            if (a.v != 0 && b.p) {
+                *b.p = cast(ushort) (cast(short) b.v / cast(short) a.v);
+                EX = ((cast(short)b.v << 16) / cast(short) a.v) & 0xFFFF;
+            } else if (b.p) {
+                *b.p = 0;
+                EX = 0;
+            } else {
+                EX = 0;
             }
             break;
         case MOD:
-            if (a.p) {
-                if (b.v == 0) *a.p = 0;
-                else *a.p = a.v % b.v;
+            if (b.p) {
+                if (a.v == 0) *b.p = 0;
+                else *b.p = b.v % a.v;
             }
             break;
         case SHL:
-            if (a.p) *a.p = cast(ushort) (a.v << b.v);
-            O = ((a.v << b.v) >> 16) & 0xFFFF;
+            if (b.p) *b.p = cast(ushort) (b.v << a.v);
+            EX = ((b.v << a.v) >> 16) & 0xFFFF;
             break;
         case SHR:
-            if (a.p) *a.p = cast(ushort) (a.v >> b.v);
-            O = ((a.v << 16) >> b.v) & 0xFFFF;
+            if (b.p) *b.p = cast(ushort) (b.v >>> a.v);
+            EX = ((b.v << 16) >> a.v) & 0xFFFF;
             break;
+        case ASR:
+            if (b.p) *b.p = cast(ushort) (cast(short) b.v >> a.v);
+            EX = ((b.v << 16) >>> a.v) & 0xFFFF;
+            break;
+        case Reserved:
         case AND:
-            if (a.p) *a.p = cast(ushort) (a.v & b.v);
+            if (b.p) *b.p = cast(ushort) (b.v & a.v);
             break;
         case BOR:
-            if (a.p) *a.p = cast(ushort) (a.v | b.v);
+            if (b.p) *b.p = cast(ushort) (b.v | a.v);
             break;
         case XOR:
-            if (a.p) *a.p = cast(ushort) (a.v ^ b.v);
+            if (b.p) *b.p = cast(ushort) (b.v ^ a.v);
             break;
         case IFE:
-            Instruction i = decode(memory[PC++]);
-            if (a.v == b.v) {
-                execute(i);
-            } else {
-                skip(i);
-                cycleCount++;
-            }
+            condition(() => b.v == a.v);
             break;
         case IFN:
-            Instruction i = decode(memory[PC++]);
-            if (a.v != b.v) {
-                execute(i);
-            } else {
-                skip(i);
-                cycleCount++;
-            }
+            condition(() => b.v != a.v);
             break;
         case IFG:
-            Instruction i = decode(memory[PC++]);
-            if (a.v > b.v) {
-                execute(i);
-            } else {
-                skip(i);
-                cycleCount++;
-            }
+            condition(() => b.v > a.v);
+            break;
+        case IFA:
+            condition(() => cast(short) b.v > cast(short) a.v);
+            break;
+        case IFL:
+            condition(() => b.v > a.v);
+            break;
+        case IFU:
+            condition(() => cast(short) b.v > cast(short) a.v);
             break;
         case IFB:
-            Instruction i = decode(memory[PC++]);
-            if ((a.v & b.v) != 0) {
-                execute(i);
-            } else {
-                skip(i);
-                cycleCount++;
-            }
+            condition(() => (b.v & a.v) != 0);
             break;
+        case IFC:
+            condition(() => (b.v & a.v) == 0);
+            break;
+        default:
+            assert(false);
         }
     }
 
-    protected final Word read(in Instruction.Value location) pure @safe
+    protected final Word read(in Instruction.Value location, bool inA) pure @safe
     {
         switch (location) with (Instruction) {
         case Value.A: return Word(A, &A);
@@ -195,17 +249,30 @@ class CPU
         case Value.LDPCZ: auto w = Word(memory[memory[PC] + Z], &memory[memory[PC] + Z]); PC++; return w;
         case Value.LDPCI: auto w = Word(memory[memory[PC] + I], &memory[memory[PC] + I]); PC++; return w;
         case Value.LDPCJ: auto w = Word(memory[memory[PC] + J], &memory[memory[PC] + J]); PC++; return w;
-        case Value.POP: auto w = Word(memory[SP], &memory[SP]); SP++; return w;
+        case Value.PUSHORPOP:
+            if (!inA) {
+                // PUSH
+                --SP;
+                return Word(memory[SP], &memory[SP]);
+            } else {
+                // POP
+                auto w = Word(memory[SP], &memory[SP]);
+                SP++;
+                return w;
+            }
         case Value.PEEK: return Word(memory[SP], &memory[SP]);
-        case Value.PUSH: --SP; return Word(memory[SP], &memory[SP]);
+        case Value.PICK: auto w = Word(memory[SP + memory[PC]], &memory[SP + memory[PC]]); PC++; return w;
         case Value.SP: return Word(SP, &SP);
         case Value.PC: return Word(PC, &PC);
-        case Value.O: return Word(O, &O);
+        case Value.EX: return Word(EX, &EX);
         case Value.LDNXT: auto w = Word(memory[memory[PC]], &memory[memory[PC]]); PC++; return w;
         case Value.NXT: return Word(memory[PC++], null);
+        case Value.LITERAL:
         default:
-            assert(location >= Value.LITERAL);
-            return Word(location - Value.LITERAL, null);
+            if (!inA) {
+                throw new Exception("Literals can only appear in the A segment of an instruction.");
+            }
+            return Word(location - 0x21, null);
         }
         // Never reached.
     }
@@ -213,13 +280,11 @@ class CPU
     /// Advance the PC past the given instruction.
     protected final void skip(ref const Instruction i) @safe
     {
-        if (i.opcode != Instruction.Opcode.NonBasic) {
-            read(i.a);
-            read(i.b);
+        if (i.opcode != Instruction.Opcode.Special) {
+            read(i.a, true);
+            read(i.b, false);
         } else {
-            assert(i.nonbasic == Instruction.NonBasicOpcode.JSR);
-            read(i.a);
-            cycleCount += 2 + cycles(i.a);
+            read(i.a, true);
         }
     }
 }
@@ -236,46 +301,23 @@ struct Word
 /// Convert word 'op' into an Instruction.
 Instruction decode(ushort op) pure @safe
 {
+    assert(op != 0);
     Instruction instruction;
 
-    instruction.opcode = cast(Instruction.Opcode) (op & 0b000000_000000_1111);
-    if (instruction.opcode == Instruction.Opcode.NonBasic) {
-        if (((op & 0b000000_111111_0000) >> 4) != 0x01) {
-            throw new Exception("no support for any non-basic opcode except for JSR.");
-        }
-        instruction.nonbasic = Instruction.NonBasicOpcode.JSR;
-        ushort a = (op & 0b111111_000000_0000) >> 10;
-        instruction.a = cast(Instruction.Value) a;
+    instruction.opcode = cast(Instruction.Opcode) (op & 0b000000_00000_11111);
+    instruction.a = cast(Instruction.Value) ((op & 0b111111_00000_00000) >> 10);
+
+    if (instruction.opcode == Instruction.Opcode.Special) {
+        instruction.special = cast(Instruction.SpecialOpcode) ((op & 0b000000_11111_00000) >> 5);
         return instruction;
-    } else {
-        ushort a = (op & 0b000000_111111_0000) >> 4;
-        instruction.a = cast(Instruction.Value) a;
     }
 
-    ushort b = (op & 0b111111_000000_0000) >> 10;
+    ushort b = (op & 0b000000_11111_00000) >> 5;
     instruction.b = cast(Instruction.Value) b;
+    assert(instruction.b != Instruction.Value.LITERAL);
 
     return instruction;
 }
-
-immutable int[Instruction.Opcode.max+1] opcycles = [
-   -1,   // NonBasic
-    1,   // SET
-    2,   // ADD
-    2,   // SUB
-    2,   // MUL
-    3,   // DIV
-    3,   // MOD
-    2,   // SHL
-    2,   // SHR
-    1,   // AND
-    1,   // BOR
-    1,   // XOR
-    2,   // IFE
-    2,   // IFN
-    2,   // IFG
-    2,   // IFB
-];
 
 /// How many cycles does val take to look up?
 int cycles(in Instruction.Value val) pure @safe
@@ -286,7 +328,13 @@ int cycles(in Instruction.Value val) pure @safe
 /// How many cycles will instruction take (not counting failed IF ops)?
 int cycles(ref const Instruction instruction) pure @safe
 {
-    return opcycles[instruction.opcode] + cycles(instruction.a) + cycles(instruction.b);
+    int base;
+    if (instruction.opcode == Instruction.Opcode.Special) {
+        base = specialOpcycles[instruction.special];
+    } else {
+        base = opcycles[instruction.opcode];
+    }
+    return base + cycles(instruction.a) + cycles(instruction.b);
 }
 
 /**
@@ -296,27 +344,41 @@ struct Instruction
 {
     enum Opcode : ubyte
     {
-        NonBasic = 0x0,
+        Special = 0x0,
         SET,
         ADD,
         SUB,
         MUL,
+        MLI,
         DIV,
+        DVI,
         MOD,
-        SHL,
-        SHR,
         AND,
         BOR,
         XOR,
+        SHR,
+        ASR,
+        Reserved,
+        SHL,
+        IFB,
+        IFC,
         IFE,
         IFN,
         IFG,
-        IFB
+        IFA,
+        IFL,
+        IFU
     }
 
-    enum NonBasicOpcode : ubyte
+    enum SpecialOpcode : ubyte
     {
-        JSR = 0x01
+        JSR = 0x01,
+        INT = 0x08,
+        ING = 0x09,
+        INS = 0x0a,
+        HWN = 0x10,
+        HWQ = 0x11,
+        HWI = 0x12
     }
 
     enum Value : ubyte
@@ -337,7 +399,7 @@ struct Instruction
         LDZ,
         LDI,
         LDJ,
-        LDPCA,  // [next word + register]
+        LDPCA,  // [register + next word]
         LDPCB,
         LDPCC,
         LDPCX,
@@ -345,12 +407,12 @@ struct Instruction
         LDPCZ,
         LDPCI,
         LDPCJ,
-        POP,
+        PUSHORPOP,
         PEEK,
-        PUSH,
+        PICK,
         SP,
         PC,
-        O,
+        EX,
         LDNXT,  // [next word]
         NXT,  // next word (literal)
         LITERAL  // literal value
@@ -359,7 +421,47 @@ struct Instruction
     static assert(Value.LITERAL == 0x20);
 
     Opcode opcode;  /// The opcode of the instruction.
-    NonBasicOpcode nonbasic;  /// If opcode is NonBasic, then this is filled in.
+    SpecialOpcode special;  /// If opcode is Special, then this is filled in.
     Value a;  /// First value evaluated.
     Value b;  /// Second value evaluated.
 }
+
+immutable int[Instruction.Opcode.max+1] opcycles = [
+    -1,   // NonBasic
+    1,   // SET
+    2,   // ADD
+    2,   // SUB
+    2,   // MUL
+    2,   // MLI
+    3,   // DIV
+    3,   // DVI
+    3,   // MOD
+    1,   // AND
+    1,   // BOR
+    1,   // XOR
+    2,   // SHR
+    2,   // ASR
+    2,   // SHL
+    -1,   // Reserved
+    2,   // IFB
+    2,   // IFC
+    2,   // IFE
+    2,   // IFN
+    2,   // IFG
+    2,   // IFA
+    2,   // IFL
+    2,   // IFU
+];
+
+immutable int[Instruction.SpecialOpcode.max+1] specialOpcycles = [
+    -1,
+    3,  // JSR
+    -1, -1, -1, -1, -1, -1,
+    4,  // INT
+    1,  // ING
+    1,  // INS
+    -1, -1, -1, -1, -1,
+    2,  // HWN
+    4,  // HWQ
+    4,  // HWI
+];
