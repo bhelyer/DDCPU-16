@@ -134,10 +134,10 @@ class CPU
             case INT:
                 interrupt(a.v);
                 break;
-            case ING:
+            case IAG:
                 if (a.p) *a.p = IA;
                 break;
-            case INS:
+            case IAS:
                 IA = a.v;
                 break;
             case HWN:
@@ -213,6 +213,11 @@ class CPU
             if (b.p) *b.p = cast(ushort) (b.v << a.v);
             EX = ((b.v << a.v) >> 16) & 0xFFFF;
             break;
+        case MVI:
+            if (b.p) *b.p = a.v;
+            I++;
+            J++;
+            break;
         case SHR:
             if (b.p) *b.p = cast(ushort) (b.v >>> a.v);
             EX = ((b.v << 16) >> a.v) & 0xFFFF;
@@ -221,7 +226,6 @@ class CPU
             if (b.p) *b.p = cast(ushort) (cast(short) b.v >> a.v);
             EX = ((b.v << 16) >>> a.v) & 0xFFFF;
             break;
-        case Reserved:
         case AND:
             if (b.p) *b.p = cast(ushort) (b.v & a.v);
             break;
@@ -254,6 +258,22 @@ class CPU
             break;
         case IFC:
             condition(() => (b.v & a.v) == 0);
+            break;
+        case ADX:
+            if (b.p) *b.p = cast(ushort) (b.v + a.v + EX);
+            if (b.v + a.v + EX > ushort.max) {
+                EX = 0x0001;
+            } else {
+                EX = 0;
+            }
+            break;
+        case SUX:
+            if (b.p) *b.p = cast(ushort) (b.v - a.v - EX);
+            if (b.v - a.v - EX < 0) {
+                EX = 0xFFFF;
+            } else {
+                EX = 0;
+            }
             break;
         default:
             assert(false);
@@ -396,8 +416,8 @@ struct Instruction
         XOR,
         SHR,
         ASR,
-        Reserved,
         SHL,
+        MVI,
         IFB,
         IFC,
         IFE,
@@ -405,15 +425,19 @@ struct Instruction
         IFG,
         IFA,
         IFL,
-        IFU
+        IFU,
+        Reserved1,
+        Reserved2,
+        ADX,
+        SUX
     }
 
     enum SpecialOpcode : ubyte
     {
         JSR = 0x01,
         INT = 0x08,
-        ING = 0x09,
-        INS = 0x0a,
+        IAG = 0x09,
+        IAS = 0x0a,
         HWN = 0x10,
         HWQ = 0x11,
         HWI = 0x12
@@ -480,7 +504,6 @@ immutable int[Instruction.Opcode.max+1] opcycles = [
     2,   // SHR
     2,   // ASR
     2,   // SHL
-    -1,   // Reserved
     2,   // IFB
     2,   // IFC
     2,   // IFE
@@ -489,6 +512,10 @@ immutable int[Instruction.Opcode.max+1] opcycles = [
     2,   // IFA
     2,   // IFL
     2,   // IFU
+    -1,  // Reserved2
+    -1,  // Reserved3
+    3,   // ADX
+    3,   // SUX
 ];
 
 immutable int[Instruction.SpecialOpcode.max+1] specialOpcycles = [
@@ -496,8 +523,8 @@ immutable int[Instruction.SpecialOpcode.max+1] specialOpcycles = [
     3,  // JSR
     -1, -1, -1, -1, -1, -1,
     4,  // INT
-    1,  // ING
-    1,  // INS
+    1,  // IAG
+    1,  // IAS
     -1, -1, -1, -1, -1,
     2,  // HWN
     4,  // HWQ

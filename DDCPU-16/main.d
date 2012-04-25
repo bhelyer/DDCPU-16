@@ -133,7 +133,6 @@ void realmain(string[] args)
         if (delta < dur!"msecs"(1000/FPS)) {
             Thread.sleep(dur!"msecs"(1000/FPS) - delta);
         }
-        cpu.interrupt(0);
     }
 }
 
