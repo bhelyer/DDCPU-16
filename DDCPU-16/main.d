@@ -10,7 +10,6 @@ import core.thread;
 import siege.siege;
 
 import dcpu16.cpu;
-import ui;
 
 enum CLOCKSPEED = 100_000;  // In hertz
 enum FPS = 60;
@@ -87,8 +86,8 @@ void realmain(string[] args)
 {
     string rom;
     if (args.length == 1) {
-        rom = browseForFile();
-        writeln(rom);
+        writeln("usage: ddcpu16 <rom>");
+        return;
     } else {
         rom = args[1];
     }
