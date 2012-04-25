@@ -193,6 +193,7 @@
  <Folder name="DDCPU_16">
   <Folder name="dcpu16">
    <File path="dcpu16\cpu.d" />
+   <File path="dcpu16\hardware.d" />
   </Folder>
   <File path="ddcpu.def" />
   <File path="main.d" />

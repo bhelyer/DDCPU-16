@@ -1,5 +1,7 @@
 module dcpu16.cpu;
 
+import dcpu16.hardware;
+
 
 /**
  * Holds the state of a DCPU-16 instance.
@@ -14,6 +16,9 @@ class CPU
     ushort IA;  /// Interrupt Address.
     ushort[] memory;  /// 0x10000 words of memory.
     long cycleCount;  /// How many cycles the CPU has run.
+
+    protected IHardware[] mDevices;
+    protected bool mHardwareInterrupt;
 
     invariant()
     {
@@ -49,6 +54,21 @@ class CPU
     {
         int remainingCycles = cycles;
         while (remainingCycles > 0) {
+            if (IA != 0 && mHardwareInterrupt) {
+                int idleDevices;
+                foreach (device; mDevices) {
+                    ushort message;
+                    if (device.pendingInterrupt(message)) {
+                        interrupt(message);
+                        break;
+                    }
+                    idleDevices++;
+                }
+                if (idleDevices == mDevices.length) {
+                    mHardwareInterrupt = false;
+                }
+            }
+
             Instruction instruction = decode(memory[PC++]);
             long cc = cycleCount;
             execute(instruction);
@@ -65,6 +85,17 @@ class CPU
             PC = IA;
             A = message;
         }
+    }
+
+    final void register(IHardware device) @safe
+    {
+        device.attach(this);
+        mDevices ~= device;
+    }
+
+    final void hardwareInterrupt() @safe
+    {
+        mHardwareInterrupt = true;
     }
 
     /**
@@ -110,12 +141,19 @@ class CPU
                 IA = a.v;
                 break;
             case HWN:
-                if (a.p) *a.p = 0;
+                if (a.p) *a.p = cast(ushort) mDevices.length;
                 break;
             case HWQ:
-                A = B = C = X = Y = 0;
+                if (a.v > mDevices.length) {
+                    break;
+                }
+                mDevices[a.v].query();
                 break;
             case HWI:
+                if (a.v > mDevices.length) {
+                    break;
+                }
+                mDevices[a.v].interrupt();
                 break;
             default:
                 ushort fff = instruction.special;
