@@ -35,18 +35,9 @@ class Controller : Entity
         this.cpu = cpu;
     }
 
-    version (none) final override void evKeyboardKeyPress(uint k)
+    final override void evKeyboardKeyPress(uint k)
     {
-        version (none) if (k >= 'A' && k <= 'Z') {
-            return;  // Handled by the CharPress handler.
-        }
         addKey(cast(ushort) k);
-    }
-
-    version (all) final override void evKeyboardCharPress(dchar c)
-    {
-        writeln(c);
-        addKey(cast(ushort) c);
     }
 
     protected final addKey(ushort k)
