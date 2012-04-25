@@ -64,15 +64,11 @@ void realmain(string[] args)
         draw.clear();  // The texture won't render without this. SIEGE bug.
         cpu.run(CLOCKSPEED/FPS);
 
+        display.render();
         texture.data(SWIDTH, SHEIGHT, 32, display.texture);
         texture.draw();
         window.swapBuffers();
 
-        // A magical cycle count, that's Close Enough (tm) to the emulator on 0x10co.de.
-        if ((cpu.cycleCount - lastBlinkToggle) > 100_000) {
-            blink = !blink;
-            lastBlinkToggle = cpu.cycleCount;
-        }
         SysTime b = Clock.currTime();
         Duration delta = b - a;
         if (delta < dur!"msecs"(1000/FPS)) {

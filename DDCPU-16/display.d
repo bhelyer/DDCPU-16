@@ -30,6 +30,7 @@ class Display : IHardware
     ];
     uint background;
     ushort[] font;
+    ushort vramBase;
     ushort userFont;
     ushort userPalette;
 
@@ -62,11 +63,7 @@ class Display : IHardware
     {
         switch (cpu.A) {
         case 0:
-            if (cpu.B != 0) {
-                map(cpu.B);
-            } else {
-                texture[] = 0;
-            }
+            vramBase = cpu.B;
             break;
         case 1:
             userFont = cpu.B;
@@ -94,7 +91,7 @@ class Display : IHardware
     }
 
     /// Render out the screen buffer at base to texture. (using 0xAABBGGRR, i.e. RGBA in little endian).
-    protected final void map(ushort base) @safe
+    final void render() @safe
     {
         uint borderColour = colour(background & 0xF);
 
@@ -111,7 +108,10 @@ class Display : IHardware
 
                 size_t j = nx + ny * WIDTH;
                 // Figure out which ASCII character needs to be displayed.
-                ushort c = cpu.memory[base+j];
+                ushort c;
+                if (vramBase != 0) {
+                    c = cpu.memory[vramBase+j];
+                }
                 ubyte ascii = c & 0x007F;
                 bool cblink = (c & 0x0080) != 0;
 
@@ -147,7 +147,7 @@ class Display : IHardware
         }
     }
 
-    protected uint colour(size_t i) @safe pure
+    protected final uint colour(size_t i) @safe pure
     {
         if (userPalette != 0) {
             /// !!! TMP
