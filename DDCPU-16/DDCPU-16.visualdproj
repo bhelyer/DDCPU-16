@@ -197,5 +197,6 @@
   </Folder>
   <File path="ddcpu.def" />
   <File path="main.d" />
+  <File path="display.d" />
  </Folder>
 </DProject>
