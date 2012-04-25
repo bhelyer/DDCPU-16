@@ -2,7 +2,6 @@ module main;
 
 import std.datetime;
 import std.file;
-import std.intrinsic;
 import std.stdio;
 import std.traits;
 import core.thread;
