@@ -196,7 +196,8 @@
    <File path="dcpu16\hardware.d" />
   </Folder>
   <File path="ddcpu.def" />
-  <File path="main.d" />
   <File path="display.d" />
+  <File path="floppy.d" />
+  <File path="main.d" />
  </Folder>
 </DProject>
