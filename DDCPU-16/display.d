@@ -34,7 +34,19 @@ class Display : IHardware
     ushort vramBase;
     ushort userFont;
     ushort userPalette;
-    bool blink;
+
+    protected bool mBlink;
+    bool blink() @property
+    {
+        return mBlink;
+    }
+    void blink(bool v) @property
+    {
+        if ((Clock.currTime() - waitOrigin) < dur!"seconds"(1)) {
+            return;
+        }
+        mBlink = v;
+    }
 
     private SysTime waitOrigin;
 
