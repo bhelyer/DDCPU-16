@@ -1,6 +1,8 @@
 /// Specification: http://dcpu.com/highnerd/dcpu16_1_5.txt
 module dcpu16.cpu;
 
+import std.array;
+
 import dcpu16.hardware;
 
 
@@ -17,7 +19,7 @@ class CPU
     ushort IA;  /// Interrupt Address.
     ushort[] memory;  /// 0x10000 words of memory.
     long cycleCount;  /// How many cycles the CPU has run.
-    bool onFire;  /// Are we on fire? (Go slower, change RAM randomly)
+    bool onFire;  /// Are we on fire? (Go slower, change RAM randomly).
     ushort[] interruptQueue;  /// If length > 256, then we catch fire.
 
     protected bool mTriggerInterrupts = true;
@@ -58,7 +60,7 @@ class CPU
     {
         int remainingCycles = cycles;
         while (remainingCycles > 0) {
-            if (IA != 0 && mHardwareInterrupt) {
+            if (IA != 0 && mTriggerInterrupts && mHardwareInterrupt) {
                 int idleDevices;
                 foreach (device; mDevices) {
                     ushort message;
@@ -73,6 +75,17 @@ class CPU
                 }
             }
 
+            onFire = interruptQueue.length > 256;
+            if (onFire) {
+                burn();
+            }
+
+            if (mTriggerInterrupts && interruptQueue.length > 0) {
+                ushort message = interruptQueue.front;
+                interruptQueue.popFront();
+                interrupt(message);
+            }
+
             Instruction instruction = decode(memory[PC++]);
             long cc = cycleCount;
             execute(instruction);
@@ -83,7 +96,9 @@ class CPU
 
     final void interrupt(ushort message) @safe
     {
-        if (IA != 0) {
+        if (!mTriggerInterrupts) {
+            interruptQueue ~= message;
+        } else if (IA != 0) {
             memory[--SP] = PC;
             memory[--SP] = A;
             PC = IA;
@@ -116,7 +131,6 @@ class CPU
                 execute(i);
             } else {
                 skip(i);
-                cycleCount++;
             }
         }
 
@@ -134,6 +148,9 @@ class CPU
             case JSR:
                 memory[--SP] = PC;
                 PC = a.v;
+                break;
+            case HCF:
+                onFire = true;
                 break;
             case INT:
                 interrupt(a.v);
@@ -359,6 +376,16 @@ class CPU
         // Never reached.
     }
 
+    protected final void burn() @trusted
+    {
+        import std.random;
+        assert(onFire);
+        cycleCount += uniform(10, 100);
+        if (uniform(0, 100) == 42) {
+            memory[uniform(0, $)] += uniform(-1000, 1000);
+        }
+    }
+
     /// Advance the PC based on v, without touching SP or anything else. because that would be silly.
     protected final void advance(in Instruction.Value v) @safe
     {
@@ -371,11 +398,18 @@ class CPU
     /// Advance the PC past the given instruction.
     protected final void skip(ref const Instruction i) @safe
     {
+        cycleCount++;
+
         if (i.opcode != Instruction.Opcode.Special) {
             advance(i.a);
             advance(i.b);
         } else {
             advance(i.a);
+        }
+
+        if (i.opcode >= Instruction.Opcode.IFB && i.opcode <= Instruction.Opcode.IFU) {
+            Instruction i2 = decode(memory[PC++]);
+            skip(i2);
         }
     }
 }
