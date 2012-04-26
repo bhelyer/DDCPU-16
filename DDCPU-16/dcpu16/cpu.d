@@ -1,3 +1,4 @@
+/// Specification: http://dcpu.com/highnerd/dcpu16_1_5.txt
 module dcpu16.cpu;
 
 import dcpu16.hardware;
@@ -16,7 +17,10 @@ class CPU
     ushort IA;  /// Interrupt Address.
     ushort[] memory;  /// 0x10000 words of memory.
     long cycleCount;  /// How many cycles the CPU has run.
+    bool onFire;  /// Are we on fire? (Go slower, change RAM randomly)
+    ushort[] interruptQueue;  /// If length > 256, then we catch fire.
 
+    protected bool mTriggerInterrupts = true;
     protected IHardware[] mDevices;
     protected bool mHardwareInterrupt;
 
@@ -140,6 +144,15 @@ class CPU
             case IAS:
                 IA = a.v;
                 break;
+            case IAP:
+                if (IA != 0) {
+                    memory[--SP] = IA;
+                    IA = a.v;
+                }
+                break;
+            case IAQ:
+                mTriggerInterrupts = a.v == 0;
+                break;
             case HWN:
                 if (a.p) *a.p = cast(ushort) mDevices.length;
                 break;
@@ -209,11 +222,22 @@ class CPU
                 else *b.p = b.v % a.v;
             }
             break;
+        case MDI:
+            if (b.p) {
+                if (a.v == 0) *b.p = 0;
+                else *b.p = cast(short) b.v % cast(short) a.v;
+            }
+            break;
         case SHL:
             if (b.p) *b.p = cast(ushort) (b.v << a.v);
             EX = ((b.v << a.v) >> 16) & 0xFFFF;
             break;
-        case MVI:
+        case STI:
+            if (b.p) *b.p = a.v;
+            I++;
+            J++;
+            break;
+        case STD:
             if (b.p) *b.p = a.v;
             I++;
             J++;
@@ -267,9 +291,9 @@ class CPU
                 EX = 0;
             }
             break;
-        case SUX:
-            if (b.p) *b.p = cast(ushort) (b.v - a.v - EX);
-            if (b.v - a.v - EX < 0) {
+        case SBX:
+            if (b.p) *b.p = cast(ushort) (b.v - a.v + EX);
+            if (b.v - a.v + EX < 0) {
                 EX = 0xFFFF;
             } else {
                 EX = 0;
@@ -420,13 +444,13 @@ struct Instruction
         DIV,
         DVI,
         MOD,
+        MDI,
         AND,
         BOR,
         XOR,
         SHR,
         ASR,
         SHL,
-        MVI,
         IFB,
         IFC,
         IFE,
@@ -438,15 +462,24 @@ struct Instruction
         Reserved1,
         Reserved2,
         ADX,
-        SUX
+        SBX,
+        Reserved3,
+        Reserved4,
+        STI,
+        STD
     }
+
+    static assert(Opcode.STD == 0x1f);
 
     enum SpecialOpcode : ubyte
     {
         JSR = 0x01,
+        HCF = 0x07,
         INT = 0x08,
         IAG = 0x09,
         IAS = 0x0a,
+        IAP = 0x0b,
+        IAQ = 0x0c,
         HWN = 0x10,
         HWQ = 0x11,
         HWI = 0x12
@@ -507,6 +540,7 @@ immutable int[Instruction.Opcode.max+1] opcycles = [
     3,   // DIV
     3,   // DVI
     3,   // MOD
+    3,   // MDI
     1,   // AND
     1,   // BOR
     1,   // XOR
@@ -521,20 +555,25 @@ immutable int[Instruction.Opcode.max+1] opcycles = [
     2,   // IFA
     2,   // IFL
     2,   // IFU
-    -1,  // Reserved2
-    -1,  // Reserved3
+   -1, -1,
     3,   // ADX
-    3,   // SUX
+    3,   // SBX
+   -1, -1,
+    2,   // STI
+    2,   // STD
 ];
 
 immutable int[Instruction.SpecialOpcode.max+1] specialOpcycles = [
     -1,
     3,  // JSR
-    -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1,
+    9,  // HCF
     4,  // INT
     1,  // IAG
     1,  // IAS
-    -1, -1, -1, -1, -1,
+    3,  // IAP
+    2,  // IAQ
+    -1, -1, -1,
     2,  // HWN
     4,  // HWQ
     4,  // HWI

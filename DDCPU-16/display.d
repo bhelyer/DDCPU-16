@@ -50,13 +50,11 @@ class Display : IHardware
     /// Called by the CPU when this hardware is the target of an HWQ op.
     void query() @safe
     {
-        cpu.A = 0x7349;
-        cpu.B = 0xF615;
-
+        cpu.A = 0xF615;
+        cpu.B = 0x7349;
         cpu.C = 0x1802;
-
-        cpu.X = 0x1C6C;
-        cpu.B = 0x8B36;
+        cpu.X = 0x8B36;
+        cpu.Y = 0x1C6C;
     }
 
     /// Called by the CPU when this hardware is the target of an HWI op.
