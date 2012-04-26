@@ -73,7 +73,7 @@ public:
 				return;
 
 			case READ_SECTORS:
-				if (blocking)
+				if (!blocking)
 					return; // TODO
 
 				if (!hasMedia)
@@ -93,14 +93,14 @@ public:
 					cpu.cycleCount += cyclesToSeekTo(sec);
 					track = cast(ushort)(sec / geom.sectorsPerTrack);
 					cpu.cycleCount += cyclesToReadSector(sec);
-					readSector(sec, cast(ushort)(cpu.C + i*geom.wordsPerSector));
+					readSector(sec, cast(ushort)(cpu.X + i*geom.wordsPerSector));
 				}
 
 				cpu.A = ERROR_NONE;
 				return;
 
 			case WRITE_SECTORS:
-				if (blocking)
+				if (!blocking)
 					return; // TODO
 
 				if (!hasMedia)
@@ -120,7 +120,7 @@ public:
 					cpu.cycleCount += cyclesToSeekTo(sec);
 					track = cast(ushort)(sec / geom.sectorsPerTrack);
 					cpu.cycleCount += cyclesToReadSector(sec);
-					writeSector(sec, cast(ushort)(cpu.C + i*geom.wordsPerSector));
+					writeSector(sec, cast(ushort)(cpu.X + i*geom.wordsPerSector));
 				}
 
 				cpu.A = ERROR_NONE;
@@ -191,7 +191,7 @@ private:
 
 	long cyclesToReadSector(ushort sector) @safe
 	{
-		return cast(long)(SpindleSpinS / geom.sectorsPerTrack);
+		return cast(long)(CLOCKSPEED * SpindleSpinS / geom.sectorsPerTrack);
 	}
 
 	void readSector(ushort sector, ushort buffer) @trusted
@@ -204,6 +204,7 @@ private:
 	{
 		media.seek(sector * geom.wordsPerSector * 2);
 		media.rawWrite(cpu.memory[buffer..buffer+geom.wordsPerSector]);
+		media.flush();
 	}
 }
 
