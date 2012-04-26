@@ -280,7 +280,7 @@ class CPU
         }
     }
 
-    protected final Word read(in Instruction.Value location, bool inA) pure @safe
+    protected final Word read(in Instruction.Value location, bool inA) @safe
     {
         switch (location) with (Instruction) {
         case Value.A: return Word(A, &A);
@@ -335,14 +335,23 @@ class CPU
         // Never reached.
     }
 
+    /// Advance the PC based on v, without touching SP or anything else. because that would be silly.
+    protected final void advance(in Instruction.Value v) @safe
+    {
+        // Newlines are for the weak.
+        if (v >= Instruction.Value.LDPCA && v <= Instruction.Value.LDPCJ || v == Instruction.Value.PICK || v == Instruction.Value.NXT || v == Instruction.Value.LDNXT) {
+            PC++;
+        }
+    }
+
     /// Advance the PC past the given instruction.
     protected final void skip(ref const Instruction i) @safe
     {
         if (i.opcode != Instruction.Opcode.Special) {
-            read(i.a, true);
-            read(i.b, false);
+            advance(i.a);
+            advance(i.b);
         } else {
-            read(i.a, true);
+            advance(i.a);
         }
     }
 }
