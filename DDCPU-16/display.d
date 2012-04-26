@@ -1,5 +1,6 @@
 module display;
 
+import std.datetime;
 import std.file;
 
 import dcpu16.cpu;
@@ -35,6 +36,8 @@ class Display : IHardware
     ushort userPalette;
     bool blink;
 
+    private SysTime waitOrigin;
+
     this()
     {
         texture = new uint[SWIDTH * SHEIGHT];
@@ -58,10 +61,14 @@ class Display : IHardware
     }
 
     /// Called by the CPU when this hardware is the target of an HWI op.
-    void interrupt() @safe
+    void interrupt() @trusted
     {
         switch (cpu.A) {
         case 0:
+            if (vramBase == 0 && cpu.B != 0) {
+                texture[] = 0xFFFFFFFF;  // TODO: Nya logo
+                waitOrigin = Clock.currTime();
+            }
             vramBase = cpu.B;
             break;
         case 1:
@@ -90,8 +97,11 @@ class Display : IHardware
     }
 
     /// Render out the screen buffer at base to texture. (using 0xAABBGGRR, i.e. RGBA in little endian).
-    final void render() @safe
+    final void render() @trusted
     {
+        if ((Clock.currTime() - waitOrigin) < dur!"seconds"(1) || vramBase == 0) {
+            return;
+        }
         uint borderColour = colour(background & 0xF);
 
         foreach (i, ref px; texture) {
