@@ -2,6 +2,7 @@ module main;
 
 import std.datetime;
 import std.file;
+import std.getopt : getopt;
 import std.stdio;
 import std.traits;
 import core.thread;
@@ -10,6 +11,7 @@ import siege.siege;
 
 import dcpu16.cpu;
 import display;
+import floppy : Floppy;
 
 enum CLOCKSPEED = 100_000;  // In hertz
 enum FPS = 60;
@@ -35,6 +37,11 @@ void main(string[] args)
 void realmain(string[] args)
 {
     string rom;
+	string disk = null;
+
+	getopt(args,
+		   "disk", &disk);
+
     if (args.length == 1) {
         writeln("usage: ddcpu16 <rom>");
         return;
@@ -46,6 +53,13 @@ void realmain(string[] args)
 
     auto display = new Display();
     cpu.register(display);
+
+	Floppy floppy = null;
+	if (disk.length > 0)
+	{
+		floppy = new Floppy(disk);
+		cpu.register(floppy);
+	}
 
     auto prog = cast(ushort[]) read(rom);
     cpu.load(prog);
