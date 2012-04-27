@@ -564,9 +564,9 @@ immutable int[Instruction.Opcode.max+1] opcycles = [
     1,   // AND
     1,   // BOR
     1,   // XOR
-    2,   // SHR
-    2,   // ASR
-    2,   // SHL
+    1,   // SHR
+    1,   // ASR
+    1,   // SHL
     2,   // IFB
     2,   // IFC
     2,   // IFE

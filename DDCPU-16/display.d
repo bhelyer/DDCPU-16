@@ -79,6 +79,9 @@ class Display : IHardware
             vramBase = cpu.B;
             break;
         case 1:
+            if (cpu.B > 0xFFFF-16) {
+                throw new Exception("Not enough room to map font.");
+            }
             if (cpu.B == 0) {
                 userFont = font.ptr;
             } else {
