@@ -1,5 +1,7 @@
 module display;
 
+import std.array;
+import std.algorithm;
 import std.datetime;
 import std.file;
 
@@ -11,7 +13,7 @@ class Display : IHardware
 {
     CPU cpu;
     uint[] texture;
-    uint[0xF+1] palette = [
+    uint[] palette = [
         0xFF000000,
         0xFFAA0000,
         0xFF00AA00,
@@ -83,6 +85,10 @@ class Display : IHardware
         case 4:
             cpu.memory[cpu.B..cpu.B+font.length] = font[];
             cpu.cycleCount += 256;
+            break;
+        case 5:
+            cpu.memory[cpu.B..cpu.B+palette.length] = array( map!rgbaToDcpu(palette) );
+            cpu.cycleCount += 16;
             break;
         default:
             break;
@@ -163,10 +169,33 @@ class Display : IHardware
     protected final uint colour(size_t i) @safe pure
     {
         if (userPalette != 0) {
-            /// !!! TMP
-            return cpu.memory[userPalette+i];
+            return dcpuToRGBA(cpu.memory[userPalette+i]);
         } else {
             return palette[i];
         }
     }
+}
+
+/// Convert from the texture's little endian RGBA format to DCPU's colour format.
+uint dcpuToRGBA(ushort i) @safe pure
+{
+    float rpercent = ((i & 0x0F00) >> 8) / cast(float) 0xF;
+    float gpercent = ((i & 0x00F0) >> 4) / cast(float) 0xF;
+    float bpercent = (i & 0x000F) / cast(float) 0xF;
+    uint r = cast(uint) (0xFF * rpercent);
+    uint g = cast(uint) (0xFF * gpercent);
+    uint b = cast(uint) (0xFF * bpercent);
+    return 0xFF00_0000 | r | (g << 8) | (b << 16);
+}
+
+/// Convert from DCPU's colour format to little endian RGBA.
+ushort rgbaToDcpu(uint i)
+{
+    float rpercent = (i & 0x0000_00FF) / cast(float) 0xFF;
+    float gpercent = ((i & 0x0000_FF00) >> 8) / cast(float) 0xFF;
+    float bpercent = ((i & 0x00FF_0000) >> 16) / cast(float) 0xFF;
+    ushort r = cast(ushort) (0xF * rpercent);
+    ushort g = cast(ushort) (0xF * gpercent);
+    ushort b = cast(ushort) (0xF * bpercent);
+    return cast(ushort) (r | (g << 4) | (b << 8));
 }
