@@ -100,6 +100,7 @@ class CPU
         if (!mTriggerInterrupts) {
             interruptQueue ~= message;
         } else if (IA != 0) {
+            mTriggerInterrupts = false;
             memory[--SP] = PC;
             memory[--SP] = A;
             PC = IA;
