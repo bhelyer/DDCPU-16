@@ -86,7 +86,7 @@
   <preBuildCommand />
   <postBuildCommand />
   <debugtarget>$(TARGETPATH)</debugtarget>
-  <debugarguments>test.dcpu</debugarguments>
+  <debugarguments>test2.dcpu</debugarguments>
   <debugworkingdir>$(OutDir)</debugworkingdir>
   <debugattach>0</debugattach>
   <debugremote />
@@ -198,6 +198,7 @@
   <File path="ddcpu.def" />
   <File path="display.d" />
   <File path="floppy.d" />
+  <File path="keyboard.d" />
   <File path="main.d" />
  </Folder>
 </DProject>

@@ -31,11 +31,12 @@ class Display : IHardware
         0xFF55FFFF,
         0xFFFFFFFF,
     ];
+    uint[] effectivePalette;
     uint background;
     ushort[] font;
     ushort vramBase;
-    ushort userFont;
-    ushort userPalette;
+    ushort* userFont;
+    uint userPalette;
     bool blink;
 
     private SysTime waitOrigin;
@@ -43,14 +44,18 @@ class Display : IHardware
     this()
     {
         texture = new uint[SWIDTH * SHEIGHT];
+        texture[] = 0xFF1F1F1F;  // TODO: Nya logo
         font = cast(ushort[]) read("font.bin");
+
+        userFont = font.ptr;
+
     }
 
     /// Called by the CPU when this hardware device is registered.
     void attach(CPU cpu) @safe
     {
         this.cpu = cpu;
-        texture[] = 0xFF1F1F1F;  // TODO: Nya logo
+
     }
 
     /// Called by the CPU when this hardware is the target of an HWQ op.
@@ -74,7 +79,11 @@ class Display : IHardware
             vramBase = cpu.B;
             break;
         case 1:
-            userFont = cpu.B;
+            if (cpu.B == 0) {
+                userFont = font.ptr;
+            } else {
+                userFont = &cpu.memory[cpu.B];
+            }
             break;
         case 2:
             userPalette = cpu.B;
@@ -114,6 +123,15 @@ class Display : IHardware
         }
         uint borderColour = colour(background & 0xF);
 
+        if (userPalette == 0) {
+            effectivePalette = palette;
+        } else {
+            effectivePalette.length = 16;
+            foreach (i; 0..16) {
+                effectivePalette[i] = dcpuToRGBA(cpu.memory[userPalette+i]);
+            }
+        }
+
         foreach (i, ref px; texture) {
             // The x, y coordinates of this pixel from the top left of the screen.
             int y = i / SWIDTH;
@@ -128,19 +146,12 @@ class Display : IHardware
                 size_t j = nx + ny * WIDTH;
                 // Figure out which ASCII character needs to be displayed.
                 ushort c;
-                if (vramBase != 0) {
-                    c = cpu.memory[vramBase+j];
-                }
+                c = cpu.memory[vramBase+j];
                 ubyte ascii = c & 0x007F;
                 bool cblink = (c & 0x0080) != 0;
 
                 // The actual pixel data stored in memory.
-                uint chr;
-                if (userFont != 0) {
-                    chr = (cpu.memory[userFont+ascii*2] << 16) | cpu.memory[userFont+ascii*2+1];
-                } else {
-                    chr = (font[ascii*2] << 16) | font[ascii*2+1];
-                }
+                uint chr = (userFont[ascii*2] << 16) | userFont[ascii*2+1];
 
                 // The top left origin of the current character.
                 int lx = (nx * TW) + BORDERWIDTH;
@@ -155,9 +166,9 @@ class Display : IHardware
 
                 // Use the appropriate colour.
                 if (chr & bit && !(cblink && blink)) {
-                    px = colour((c & 0xF000) >> 12);
+                    px = effectivePalette[(c & 0xF000) >> 12];
                 } else {
-                    px = colour((c & 0x0F00) >> 8);
+                    px = effectivePalette[(c & 0x0F00) >> 8];
                 }
             } else {
                 // Otherwise, we're rendering the border.

@@ -10,8 +10,9 @@ import core.thread;
 import siege.siege;
 
 import dcpu16.cpu;
-import display;
+import display : Display;
 import floppy : Floppy;
+import keyboard : Keyboard;
 
 enum CLOCKSPEED = 100_000;  // In hertz
 enum FPS = 60;
@@ -69,6 +70,8 @@ void realmain(string[] args)
     window.open(SWIDTH, SHEIGHT, 32, 0);
     window.title = "DDCPU-16";
 
+    auto keyboard = new Keyboard();  // Keyboard is an Entity and IHardware.
+    cpu.register(keyboard);
     auto texture = new Texture(SWIDTH, SHEIGHT, 32);
 
     long lastBlinkToggle;
@@ -93,4 +96,6 @@ void realmain(string[] args)
             Thread.sleep(dur!"msecs"(1000/FPS) - delta);
         }
     }
+
+    keyboard.destroy();
 }
