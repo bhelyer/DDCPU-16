@@ -1,4 +1,5 @@
-/// Specification: http://dcpu.com/highnerd/dcpu16_1_5.txt
+/// Specification: http://pastebin.com/raw.php?i=Q4JvQvnM
+/// 1.7. Is it final yet? Please let it be final now.
 module dcpu16.cpu;
 
 import std.array;
@@ -161,11 +162,10 @@ class CPU
             case IAS:
                 IA = a.v;
                 break;
-            case IAP:
-                if (IA != 0) {
-                    memory[--SP] = IA;
-                    IA = a.v;
-                }
+            case RFI:
+                mTriggerInterrupts = true;
+                A = memory[SP++];
+                PC = memory[SP++];
                 break;
             case IAQ:
                 mTriggerInterrupts = a.v == 0;
@@ -249,16 +249,6 @@ class CPU
             if (b.p) *b.p = cast(ushort) (b.v << a.v);
             EX = ((b.v << a.v) >> 16) & 0xFFFF;
             break;
-        case STI:
-            if (b.p) *b.p = a.v;
-            I++;
-            J++;
-            break;
-        case STD:
-            if (b.p) *b.p = a.v;
-            I++;
-            J++;
-            break;
         case SHR:
             if (b.p) *b.p = cast(ushort) (b.v >>> a.v);
             EX = ((b.v << 16) >> a.v) & 0xFFFF;
@@ -315,6 +305,16 @@ class CPU
             } else {
                 EX = 0;
             }
+            break;
+        case STI:
+            if (b.p) *b.p = a.v;
+            I++;
+            J++;
+            break;
+        case STD:
+            if (b.p) *b.p = a.v;
+            I--;
+            J--;
             break;
         default:
             assert(false);
@@ -512,7 +512,7 @@ struct Instruction
         INT = 0x08,
         IAG = 0x09,
         IAS = 0x0a,
-        IAP = 0x0b,
+        RFI = 0x0b,
         IAQ = 0x0c,
         HWN = 0x10,
         HWQ = 0x11,
@@ -605,7 +605,7 @@ immutable int[Instruction.SpecialOpcode.max+1] specialOpcycles = [
     4,  // INT
     1,  // IAG
     1,  // IAS
-    3,  // IAP
+    3,  // RFI
     2,  // IAQ
     -1, -1, -1,
     2,  // HWN
