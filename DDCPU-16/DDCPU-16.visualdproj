@@ -86,7 +86,7 @@
   <preBuildCommand />
   <postBuildCommand />
   <debugtarget>$(TARGETPATH)</debugtarget>
-  <debugarguments>test2.dcpu</debugarguments>
+  <debugarguments>test.dcpu</debugarguments>
   <debugworkingdir>$(OutDir)</debugworkingdir>
   <debugattach>0</debugattach>
   <debugremote />
