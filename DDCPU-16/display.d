@@ -80,6 +80,10 @@ class Display : IHardware
         case 3:
             background = cpu.B;
             break;
+        case 4:
+            cpu.memory[cpu.B..cpu.B+font.length] = font[];
+            cpu.cycleCount += 256;
+            break;
         default:
             break;
         }
