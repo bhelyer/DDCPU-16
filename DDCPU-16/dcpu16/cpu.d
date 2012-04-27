@@ -61,21 +61,6 @@ class CPU
     {
         int remainingCycles = cycles;
         while (remainingCycles > 0) {
-            if (IA != 0 && mTriggerInterrupts && mHardwareInterrupt) {
-                int idleDevices;
-                foreach (device; mDevices) {
-                    ushort message;
-                    if (device.pendingInterrupt(message)) {
-                        interrupt(message);
-                        break;
-                    }
-                    idleDevices++;
-                }
-                if (idleDevices == mDevices.length) {
-                    mHardwareInterrupt = false;
-                }
-            }
-
             onFire = interruptQueue.length > 256;
             if (onFire) {
                 burn();

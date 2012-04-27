@@ -104,17 +104,6 @@ class Display : IHardware
         }
     }
 
-    /** 
-    * Returns: true if the hardware wants to trigger the interrupt handler.
-    * Params:
-    *   message = the message to give the interrupt handler.
-    *             ignored if there's no pending interrupt.
-    */
-    bool pendingInterrupt(out ushort message) @safe
-    {
-        return false;
-    }
-
     /// Render out the screen buffer at base to texture. (using 0xAABBGGRR, i.e. RGBA in little endian).
     final void render() @trusted
     {
