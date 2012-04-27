@@ -34,19 +34,7 @@ class Display : IHardware
     ushort vramBase;
     ushort userFont;
     ushort userPalette;
-
-    protected bool mBlink;
-    bool blink() @property
-    {
-        return mBlink;
-    }
-    void blink(bool v) @property
-    {
-        if ((Clock.currTime() - waitOrigin) < dur!"seconds"(1)) {
-            return;
-        }
-        mBlink = v;
-    }
+    bool blink;
 
     private SysTime waitOrigin;
 
@@ -78,7 +66,7 @@ class Display : IHardware
         switch (cpu.A) {
         case 0:
             if (vramBase == 0 && cpu.B != 0) {
-                texture[] = 0xFFFFFFFF;  // TODO: Nya logo
+                texture[] = 0xFF1F1F1F;  // TODO: Nya logo
                 waitOrigin = Clock.currTime();
             }
             vramBase = cpu.B;

@@ -20,7 +20,7 @@ enum TW = 4 * SCALING;  // tile width
 enum TH = 8 * SCALING;  // tile height
 enum WIDTH = 32;  // in tiles
 enum HEIGHT = 12; // in tiles
-enum BORDERWIDTH = 4 * SCALING;
+enum BORDERWIDTH = 12 * SCALING;
 enum SWIDTH = WIDTH * TW + BORDERWIDTH * 2;
 enum SHEIGHT = HEIGHT * TH + BORDERWIDTH * 2;
 
