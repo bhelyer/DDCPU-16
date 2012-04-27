@@ -50,6 +50,7 @@ class Display : IHardware
     void attach(CPU cpu) @safe
     {
         this.cpu = cpu;
+        texture[] = 0xFF1F1F1F;  // TODO: Nya logo
     }
 
     /// Called by the CPU when this hardware is the target of an HWQ op.
@@ -68,7 +69,6 @@ class Display : IHardware
         switch (cpu.A) {
         case 0:
             if (vramBase == 0 && cpu.B != 0) {
-                texture[] = 0xFF1F1F1F;  // TODO: Nya logo
                 waitOrigin = Clock.currTime();
             }
             vramBase = cpu.B;
