@@ -43,6 +43,7 @@ class Clock : IHardware
                 enabled = false;
                 break;
             }
+            enabled = true;
             framesPerTick = cpu.B;
             tickCounter = 0;
             break;
@@ -65,6 +66,8 @@ class Clock : IHardware
     void tick() @safe
     {
         static assert(FPS == 60, "Clock relies on 60 FPS.");
+        if (!enabled) return;
+
         frameCounter++;
         if (frameCounter >= framesPerTick) {
             tickCounter++;
