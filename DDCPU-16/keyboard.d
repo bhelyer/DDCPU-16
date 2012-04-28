@@ -1,6 +1,8 @@
 /// Specification: http://dcpu.com/highnerd/rc_1/keyboard.txt
 module keyboard;
 
+import std.array;
+
 import siege.siege;
 
 import dcpu16.cpu;
@@ -11,6 +13,7 @@ class Keyboard : Entity, IHardware
     CPU cpu;
     ushort[] buffer;
     bool interruptsEnabled = false;
+    ushort imessage;  // message to send if interrupts are enabled.
     /// The DCPU-16 generic keyboard keycodes press state.
     bool[ushort] pressedKeys;
 
@@ -37,6 +40,14 @@ class Keyboard : Entity, IHardware
         case 0:
             buffer.length = 0;
             break;
+        case 1:
+            if (buffer.length == 0) {
+                cpu.C = 0;
+            } else {
+                cpu.C = buffer.back;
+                buffer.popBack();
+            }
+            break;
         case 2:
             if (auto p = cpu.B in pressedKeys) {
                 cpu.C = *p ? 1 : 0;
@@ -46,6 +57,7 @@ class Keyboard : Entity, IHardware
             break;
         case 3:
             interruptsEnabled = cpu.B != 0;
+            imessage = cpu.B;
             break;
         default:
             break;
@@ -54,12 +66,22 @@ class Keyboard : Entity, IHardware
 
     override void evKeyboardKeyPress(uint kc)
     {
-        pressedKeys[siegeToKeyboard(kc)] = true;
+        ushort dk = siegeToKeyboard(kc);
+        pressedKeys[dk] = true;
+        if (interruptsEnabled) {
+            buffer ~= dk;
+            cpu.interrupt(imessage);
+        }
     }
 
     override void evKeyboardKeyRelease(uint kc)
     {
-        pressedKeys[siegeToKeyboard(kc)] = false;
+        ushort dk = siegeToKeyboard(kc);
+        pressedKeys[dk] = false;
+        if (interruptsEnabled) {
+            buffer ~= dk;
+            cpu.interrupt(imessage);
+        }
     }
 }
 
