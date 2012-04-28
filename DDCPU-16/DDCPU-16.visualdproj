@@ -195,6 +195,7 @@
    <File path="dcpu16\cpu.d" />
    <File path="dcpu16\hardware.d" />
   </Folder>
+  <File path="clock.d" />
   <File path="ddcpu.def" />
   <File path="display.d" />
   <File path="floppy.d" />

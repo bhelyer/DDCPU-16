@@ -10,9 +10,12 @@ import core.thread;
 import siege.siege;
 
 import dcpu16.cpu;
+static import clock;
 import display : Display;
 import floppy : Floppy;
 import keyboard : Keyboard;
+
+alias clock.Clock DClock;
 
 enum CLOCKSPEED = 100_000;  // In hertz
 enum FPS = 60;
@@ -54,6 +57,8 @@ void realmain(string[] args)
 
     auto display = new Display();
     cpu.register(display);
+    auto clock = new DClock();
+    cpu.register(clock);
 
 	Floppy floppy = null;
 	if (disk.length > 0)
@@ -76,6 +81,7 @@ void realmain(string[] args)
 
     long lastBlinkToggle;
     while (sgcore.loop()) {
+        clock.tick();
         SysTime a = Clock.currTime();
         draw.clear();  // The texture won't render without this. SIEGE bug.
         cpu.run(CLOCKSPEED/FPS);
