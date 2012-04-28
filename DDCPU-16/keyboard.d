@@ -2,6 +2,7 @@
 module keyboard;
 
 import std.array;
+import std.ascii : toLower, toUpper;
 
 import siege.siege;
 
@@ -16,6 +17,7 @@ class Keyboard : Entity, IHardware
     ushort imessage;  // message to send if interrupts are enabled.
     /// The DCPU-16 generic keyboard keycodes press state.
     bool[ushort] pressedKeys;
+    bool[dchar] pressedChars;
 
     /// Called by the CPU when this hardware device is registered.
     void attach(CPU cpu) @safe
@@ -66,7 +68,16 @@ class Keyboard : Entity, IHardware
 
     override void evKeyboardKeyPress(uint kc)
     {
-        ushort dk = siegeToKeyboard(kc);
+        ushort dk = cast(ushort) toLower(siegeToKeyboard(kc));
+
+        if (dk >= 0x20 && dk <= 0x7F) {
+            if (pressedKeys.get(0x90, false)) {
+                // If shift is being held, transform the character.
+                dk = shiftTransform(dk);
+            }
+            pressedChars[dk] = true;
+        }
+        
         pressedKeys[dk] = true;
         if (interruptsEnabled) {
             buffer ~= dk;
@@ -76,12 +87,52 @@ class Keyboard : Entity, IHardware
 
     override void evKeyboardKeyRelease(uint kc)
     {
-        ushort dk = siegeToKeyboard(kc);
+        ushort dk = cast(ushort) toLower(siegeToKeyboard(kc));
+        
+        if (dk >= 0x20 && dk <= 0x7F) {
+            if (pressedChars.get(shiftTransform(dk), false)) {
+                dk = shiftTransform(dk);
+            }
+            pressedChars[dk] = false;
+        }
+
         pressedKeys[dk] = false;
         if (interruptsEnabled) {
             buffer ~= dk;
             cpu.interrupt(imessage);
         }
+    }
+}
+
+ushort shiftTransform(ushort k)
+{
+    if (k >= 'a' && k <= 'z') {
+        return cast(ushort) toUpper(k);
+    }
+
+    switch (k) {
+    case '1': return '!';
+    case '2': return '@';
+    case '3': return '#';
+    case '4': return '$';
+    case '5': return '%';
+    case '6': return '^';
+    case '7': return '&';
+    case '8': return '*';
+    case '9': return '(';
+    case '0': return ')';
+    case '-': return '_';
+    case '=': return '+';
+    case '[': return '{';
+    case ']': return '}';
+    case ':': return ';';
+    case '\'': return '"';
+    case ',': return '<';
+    case '.': return '>';
+    case '/': return '?';
+    case '\\': return '|';
+    case '`': return '~';
+    default: return k;
     }
 }
 
@@ -105,26 +156,5 @@ ushort siegeToKeyboard(uint kc)
     case SG_KEYBOARD_KEY_RCTRL: return 0x91;
     default:
         return 0;
-    }
-}
-
-uint keyboardToSiege(ushort kc)
-{
-    if (kc >= 0x20 && kc <= 0x7f) {
-        return kc;
-    }
-
-    switch (kc) {
-    case 0x10: return SG_KEYBOARD_KEY_BACKSPACE;
-    case 0x11: return SG_KEYBOARD_KEY_ENTER;
-    case 0x12: return SG_KEYBOARD_KEY_INSERT;
-    case 0x13: return SG_KEYBOARD_KEY_DELETE;
-    case 0x80: return SG_KEYBOARD_KEY_UP;
-    case 0x81: return SG_KEYBOARD_KEY_DOWN;
-    case 0x82: return SG_KEYBOARD_KEY_LEFT;
-    case 0x83: return SG_KEYBOARD_KEY_RIGHT;
-    case 0x90: return SG_KEYBOARD_KEY_LSHIFT;
-    case 0x91: return SG_KEYBOARD_KEY_LCTRL;
-    default: return 0;
     }
 }
