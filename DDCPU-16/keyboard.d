@@ -11,6 +11,8 @@ class Keyboard : Entity, IHardware
     CPU cpu;
     ushort[] buffer;
     bool interruptsEnabled = false;
+    /// The DCPU-16 generic keyboard keycodes press state.
+    bool[ushort] pressedKeys;
 
     /// Called by the CPU when this hardware device is registered.
     void attach(CPU cpu) @safe
@@ -36,7 +38,11 @@ class Keyboard : Entity, IHardware
             buffer.length = 0;
             break;
         case 2:
-            cpu.C = keyboard.press(keyboardToSiege(cpu.B));
+            if (auto p = cpu.B in pressedKeys) {
+                cpu.C = *p ? 1 : 0;
+            } else {
+                cpu.C = 0;
+            }
             break;
         case 3:
             interruptsEnabled = cpu.B != 0;
@@ -44,6 +50,16 @@ class Keyboard : Entity, IHardware
         default:
             break;
         }
+    }
+
+    override void evKeyboardKeyPress(uint kc)
+    {
+        pressedKeys[siegeToKeyboard(kc)] = true;
+    }
+
+    override void evKeyboardKeyRelease(uint kc)
+    {
+        pressedKeys[siegeToKeyboard(kc)] = false;
     }
 }
 
