@@ -37,6 +37,20 @@ class CPU
         memory = new ushort[MEMORY_SIZE];
     }
 
+    void reset() @safe
+    {
+        A = B = C = X = Y = Z = I = J = 0;
+        PC = 0;
+        SP = 0;
+        EX = 0;
+        IA = 0;
+        memory[] = 0;
+        cycleCount = 0;
+        onFire = false;
+        interruptQueue.length = 0;
+        mTriggerInterrupts = false;
+    }
+
     /**
      * Load a series of words into memory starting at address 0x0.
      * Params:
