@@ -51,11 +51,20 @@ class Display : IHardware
 
     }
 
+    void reset() @safe
+    {
+        texture[] = 0xFF1F1F1F;
+        background = 0;
+        vramBase = 0;
+        userFont = font.ptr;
+        userPalette = 0;
+        blink = false;
+    }
+
     /// Called by the CPU when this hardware device is registered.
     void attach(CPU cpu) @safe
     {
         this.cpu = cpu;
-
     }
 
     /// Called by the CPU when this hardware is the target of an HWQ op.

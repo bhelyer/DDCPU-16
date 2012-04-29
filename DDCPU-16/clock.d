@@ -24,6 +24,16 @@ class Clock : IHardware
         this.cpu = cpu;
     }
 
+    void reset() @safe
+    {
+        enabled = false;
+        interruptsEnabled = false;
+        imessage = 0;
+        framesPerTick = 0;
+        tickCounter = 0;
+        frameCounter = 0;
+    }
+
     /// Called by the CPU when this hardware is the target of an HWQ op.
     void query() @safe
     {

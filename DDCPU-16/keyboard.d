@@ -25,6 +25,15 @@ class Keyboard : Entity, IHardware
         this.cpu = cpu;
     }
 
+    void reset() @safe
+    {
+        buffer.length = 0;
+        interruptsEnabled = false;
+        imessage = 0;
+        foreach (k, v; pressedKeys) pressedKeys.remove(k);
+        foreach (k, v; pressedChars) pressedChars.remove(k);
+    }
+
     /// Called by the CPU when this hardware is the target of an HWQ op.
     void query() @safe
     {

@@ -143,10 +143,13 @@ public:
 		}
 	}
 
-	bool pendingInterrupt(out ushort message) @safe
-	{
-		return false;
-	}
+    void reset() @safe
+    {
+        flags = 0;
+        intMessage = 0xFFFF;
+        geom = DiskGeometry(80, 18, 1440, 512);
+        track = 0;
+    }
 
 private:
 	/// The CPU we're attached to.
