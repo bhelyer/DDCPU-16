@@ -25,7 +25,6 @@ class CPU
 
     protected bool mTriggerInterrupts = true;
     protected IHardware[] mDevices;
-    protected bool mHardwareInterrupt;
 
     invariant()
     {
@@ -97,11 +96,6 @@ class CPU
     {
         device.attach(this);
         mDevices ~= device;
-    }
-
-    final void hardwareInterrupt() @safe
-    {
-        mHardwareInterrupt = true;
     }
 
     /**
