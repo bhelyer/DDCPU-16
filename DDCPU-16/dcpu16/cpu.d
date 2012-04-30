@@ -48,7 +48,11 @@ class CPU
         cycleCount = 0;
         onFire = false;
         interruptQueue.length = 0;
-        mTriggerInterrupts = false;
+        mTriggerInterrupts = true;
+
+        foreach (device; mDevices) {
+            device.reset();
+        }
     }
 
     /**

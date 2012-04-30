@@ -8,6 +8,7 @@ import std.traits;
 import core.thread;
 
 import siege.siege;
+import siege.input.keyboard : press;
 
 import dcpu16.cpu;
 static import clock;
@@ -81,6 +82,13 @@ void realmain(string[] args)
 
     long lastBlinkToggle;
     while (sgcore.loop()) {
+        if (press(SG_KEYBOARD_KEY_LCTRL) || press(SG_KEYBOARD_KEY_RCTRL)) {
+            if (press('R')) {
+                cpu.reset();
+                cpu.load(prog);
+            }
+        }
+
         clock.tick();
         SysTime a = Clock.currTime();
         draw.clear();  // The texture won't render without this. SIEGE bug.
