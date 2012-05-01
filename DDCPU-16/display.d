@@ -139,7 +139,7 @@ class Display : IHardware
             int x = i - y * SWIDTH;
 
             // Inside the screenbuffer's display rectangle.
-            if (x > BORDERWIDTH && x < SWIDTH - BORDERWIDTH && y > BORDERWIDTH && y < SHEIGHT - BORDERWIDTH) {
+            if (x > BORDERWIDTH-1 && x < SWIDTH - BORDERWIDTH && y > BORDERWIDTH-1 && y < SHEIGHT - BORDERWIDTH) {
                 // The coordinates in the DCPU screenbuffer. (i.e. it goes to 31,11)
                 int nx = (x - BORDERWIDTH) / TW;
                 int ny = (y - BORDERWIDTH) / TH;

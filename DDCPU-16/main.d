@@ -96,14 +96,16 @@ void realmain(string[] args)
     while (sgcore.loop()) {
         if (press(SG_KEYBOARD_KEY_LCTRL) || press(SG_KEYBOARD_KEY_RCTRL)) {
             if (press('R')) {
+                prog = cast(ushort[]) read(rom);
                 cpu.reset();
                 cpu.load(prog);
             }
             if (press('O')) {
                 string newFile = fileDialog(".");
                 if (newFile.length != 0) {
+                    rom = newFile;
                     cpu.reset();
-                    prog = cast(ushort[]) read(newFile);
+                    prog = cast(ushort[]) read(rom);
                     cpu.load(prog);
                 }
             }
