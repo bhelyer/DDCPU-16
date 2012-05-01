@@ -77,7 +77,7 @@
   <pathCv2pdb>$(VisualDInstallDir)cv2pdb\cv2pdb.exe</pathCv2pdb>
   <objfiles />
   <linkswitches />
-  <libfiles>siege.lib sieged.lib Comdlg32.lib</libfiles>
+  <libfiles>siege.lib sieged.lib comdlg32.lib comctl32.lib</libfiles>
   <libpaths>lib</libpaths>
   <deffile>ddcpu.def</deffile>
   <resfile />

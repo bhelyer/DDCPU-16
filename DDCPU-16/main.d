@@ -1,10 +1,12 @@
 module main;
 
+import std.conv;
 import std.datetime;
 import std.file;
 import std.getopt : getopt;
 import std.stdio;
 import std.traits;
+import std.utf;
 import core.thread;
 
 import siege.siege;
@@ -29,13 +31,22 @@ enum BORDERWIDTH = 8 * SCALING;
 enum SWIDTH = WIDTH * TW + BORDERWIDTH * 2;
 enum SHEIGHT = HEIGHT * TH + BORDERWIDTH * 2;
 
+version (Windows) {
+    import core.sys.windows.windows;
+    extern (Windows) DWORD CommDlgExtendedError();
+    enum OFN_FILEMUSTEXIST = 0x001000;
+}
+
 void main(string[] args)
 {
+    version (Windows) {
     try {
         realmain(args);
     } catch (Throwable t) {
-        writefln("An exception halted execution: %s", t);
-        readln();
+        MessageBoxW(null, toUTF16z(t.msg), toUTF16z("DDCPU 16"w), MB_OK | MB_ICONERROR);
+    }
+    } else {
+        realmain(args);
     }
 }
 
@@ -77,6 +88,7 @@ void realmain(string[] args)
     window.title = "DDCPU-16";
 
     auto keyboard = new Keyboard();  // Keyboard is an Entity and IHardware.
+    scope (exit) keyboard.destroy();
     cpu.register(keyboard);
     auto texture = new Texture(SWIDTH, SHEIGHT, 32);
 
@@ -86,6 +98,14 @@ void realmain(string[] args)
             if (press('R')) {
                 cpu.reset();
                 cpu.load(prog);
+            }
+            if (press('O')) {
+                string newFile = fileDialog(".");
+                if (newFile.length != 0) {
+                    cpu.reset();
+                    prog = cast(ushort[]) read(newFile);
+                    cpu.load(prog);
+                }
             }
         }
 
@@ -111,5 +131,38 @@ void realmain(string[] args)
         }
     }
 
-    keyboard.destroy();
+    
+}
+
+/**
+ * Open an 'open file' dialog at cwd and block until you get a result.
+ * Returns: the selected file, or an empty string on cancellation.
+ */
+version (Windows) string fileDialog(string cwd)
+{ 
+    wchar[] buf = new wchar[1024];
+    buf[] = 0;
+
+    OPENFILENAMEW ofn;
+    ofn.lStructSize = OPENFILENAMEW.sizeof;
+    ofn.lpstrFile = buf.ptr;
+    ofn.nMaxFile = 1024;
+    ofn.lpstrInitialDir = toUTF16z(cwd);
+    ofn.Flags = OFN_FILEMUSTEXIST;
+
+    BOOL retval = GetOpenFileNameW(&ofn);
+    if (retval == 0) {
+        DWORD errorCode = CommDlgExtendedError();
+        if (errorCode == 0) {
+            // Just a cancel.
+            return "";
+        }
+        throw new Exception("GetOpenFileNameW failure.");
+    }
+
+    return to!string(buf);
+}
+else string fileDialog(string cwd)
+{
+    return "";
 }
