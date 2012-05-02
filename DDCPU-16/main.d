@@ -59,8 +59,15 @@ void realmain(string[] args)
 		   "disk", &disk);
 
     if (args.length == 1) {
-        writeln("usage: ddcpu16 <rom>");
-        return;
+        if (exists("intro.dcpu")) {
+            rom = "intro.dcpu";
+        } else {
+            rom = fileDialog(".");
+        }
+        if (rom.length == 0) {
+            writeln("usage: ddcpu16 <rom>");
+            return;
+        }
     } else {
         rom = args[1];
     }
