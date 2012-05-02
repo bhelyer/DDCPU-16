@@ -76,6 +76,7 @@ class CPU
      */
     final int run(in int cycles) @safe
     {
+        import std.stdio;
         int remainingCycles = cycles;
         while (remainingCycles > 0) {
             onFire = interruptQueue.length > 256;
@@ -560,6 +561,16 @@ struct Instruction
     SpecialOpcode special;  /// If opcode is Special, then this is filled in.
     Value a;  /// First value evaluated.
     Value b;  /// Second value evaluated.
+
+    string toString() @trusted
+    {
+        import std.string;
+        static string valToString(Value v) { if (v >= Value.LITERAL) { return format("0x%04X", v - 21); } else { return valuestrings[v]; } }
+        string opstr = opcode == Opcode.Special ? specialOpstrings[special] : opstrings[opcode];
+        string astr  = valToString(a);
+        string bstr  = valToString(b);
+        return format("%s %s, %s", opstr, bstr, astr);
+    }
 }
 
 immutable int[Instruction.Opcode.max+1] opcycles = [
@@ -595,6 +606,40 @@ immutable int[Instruction.Opcode.max+1] opcycles = [
     2,   // STD
 ];
 
+immutable string[Instruction.Opcode.max+1] opstrings = [
+    "",   // NonBasic
+    "SET",   // SET
+    "ADD",   // ADD
+    "SUB",   // SUB
+    "MUL",   // MUL
+    "MLI",   // MLI
+    "DIV",   // DIV
+    "DVI",   // DVI
+    "MOD",   // MOD
+    "MDI",   // MDI
+    "AND",   // AND
+    "BOR",   // BOR
+    "XOR",   // XOR
+    "SHR",   // SHR
+    "ASR",   // ASR
+    "SHL",   // SHL
+    "IFB",   // IFB
+    "IFC",   // IFC
+    "IFE",   // IFE
+    "IFN",   // IFN
+    "IFG",   // IFG
+    "IFA",   // IFA
+    "IFL",   // IFL
+    "IFU",   // IFU
+    "", "",
+    "ADX",   // ADX
+    "SBX",   // SBX
+    "", "",
+    "STI",   // STI
+    "STD",   // STD
+];
+
+
 immutable int[Instruction.SpecialOpcode.max+1] specialOpcycles = [
     -1,
     3,  // JSR
@@ -609,4 +654,35 @@ immutable int[Instruction.SpecialOpcode.max+1] specialOpcycles = [
     2,  // HWN
     4,  // HWQ
     4,  // HWI
+];
+
+immutable string[Instruction.SpecialOpcode.max+1] specialOpstrings = [
+    "",
+    "JSR",  // JSR
+    "", "", "", "", "",
+    "HCF",  // HCF
+    "INT",  // INT
+    "IAG",  // IAG
+    "IAS",  // IAS
+    "RFI",  // RFI
+    "IAQ",  // IAQ
+    "", "", "",
+    "HWN",  // HWN
+    "HWQ",  // HWQ
+    "HWI",  // HWI
+];
+
+immutable string[Instruction.Value.max+1] valuestrings = [
+    "A", "B", "C", "X", "Y", "Z", "I", "J",
+    "[A]", "[B]", "[C]", "[X]", "[Y]", "[Z]", "[I]", "[J]",
+    "[A + %s]", "[B + %s]", "[C + %s]", "[X + %s]", "[Y + %s]", "[Z + %s]", "[I + %s]", "[J + %s]",
+    "%s",
+    "PEEK %s",
+    "PICK %s",
+    "SP",
+    "PC",
+    "EX",
+    "[%s]",
+    "%s",
+    "%s"
 ];
