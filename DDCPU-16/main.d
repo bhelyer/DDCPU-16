@@ -8,6 +8,7 @@ import std.stdio;
 import std.traits;
 import std.utf;
 import core.thread;
+version (Windows) import core.sys.windows.windows;
 
 import siege.siege;
 import siege.input.keyboard : press;
@@ -17,6 +18,7 @@ static import clock;
 import display : Display;
 import floppy : Floppy;
 import keyboard : Keyboard;
+import ui;
 
 alias clock.Clock DClock;
 
@@ -30,12 +32,6 @@ enum HEIGHT = 12; // in tiles
 enum BORDERWIDTH = 8 * SCALING;
 enum SWIDTH = WIDTH * TW + BORDERWIDTH * 2;
 enum SHEIGHT = HEIGHT * TH + BORDERWIDTH * 2;
-
-version (Windows) {
-    import core.sys.windows.windows;
-    extern (Windows) DWORD CommDlgExtendedError();
-    enum OFN_FILEMUSTEXIST = 0x001000;
-}
 
 void main(string[] args)
 {
@@ -143,35 +139,3 @@ void realmain(string[] args)
     
 }
 
-/**
- * Open an 'open file' dialog at cwd and block until you get a result.
- * Returns: the selected file, or an empty string on cancellation.
- */
-version (Windows) string fileDialog(string cwd)
-{ 
-    wchar[] buf = new wchar[1024];
-    buf[] = 0;
-
-    OPENFILENAMEW ofn;
-    ofn.lStructSize = OPENFILENAMEW.sizeof;
-    ofn.lpstrFile = buf.ptr;
-    ofn.nMaxFile = 1024;
-    ofn.lpstrInitialDir = toUTF16z(cwd);
-    ofn.Flags = OFN_FILEMUSTEXIST;
-
-    BOOL retval = GetOpenFileNameW(&ofn);
-    if (retval == 0) {
-        DWORD errorCode = CommDlgExtendedError();
-        if (errorCode == 0) {
-            // Just a cancel.
-            return "";
-        }
-        throw new Exception("GetOpenFileNameW failure.");
-    }
-
-    return to!string(buf);
-}
-else string fileDialog(string cwd)
-{
-    return "";
-}

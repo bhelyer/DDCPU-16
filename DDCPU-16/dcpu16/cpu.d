@@ -76,7 +76,6 @@ class CPU
      */
     final int run(in int cycles) @safe
     {
-        import std.stdio;
         int remainingCycles = cycles;
         while (remainingCycles > 0) {
             onFire = interruptQueue.length > 256;
