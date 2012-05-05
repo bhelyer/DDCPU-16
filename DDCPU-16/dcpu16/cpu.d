@@ -277,10 +277,10 @@ class CPU
             condition(() => cast(short) b.v > cast(short) a.v);
             break;
         case IFL:
-            condition(() => b.v > a.v);
+            condition(() => b.v < a.v);
             break;
         case IFU:
-            condition(() => cast(short) b.v > cast(short) a.v);
+            condition(() => cast(short) b.v < cast(short) a.v);
             break;
         case IFB:
             condition(() => (b.v & a.v) != 0);
