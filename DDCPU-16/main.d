@@ -15,6 +15,7 @@ static import clock;
 import display : Display;
 import floppy : Floppy;
 import keyboard : Keyboard;
+import util : loadBinary;
 
 alias clock.Clock DClock;
 
@@ -43,12 +44,15 @@ void realmain(string[] args)
 {
     string rom;
 	string disk = null;
+	bool forceLittleEndian = true;
 
 	getopt(args,
-		   "disk", &disk);
+		   "disk", &disk,
+		   "little-endian", { forceLittleEndian = true; },
+		   "big-endian", { forceLittleEndian = false; });
 
     if (args.length == 1) {
-        writeln("usage: ddcpu16 <rom>");
+        writeln("usage: ddcpu16 [--disk=PATH] [--little-endian] <rom>");
         return;
     } else {
         rom = args[1];
@@ -56,7 +60,7 @@ void realmain(string[] args)
 
     auto cpu = new CPU();
 
-    auto display = new Display();
+    auto display = new Display(forceLittleEndian);
     cpu.register(display);
     auto clock = new DClock();
     cpu.register(clock);
@@ -64,11 +68,11 @@ void realmain(string[] args)
 	Floppy floppy = null;
 	if (disk.length > 0)
 	{
-		floppy = new Floppy(disk);
+		floppy = new Floppy(disk, forceLittleEndian);
 		cpu.register(floppy);
 	}
 
-    auto prog = cast(ushort[]) read(rom);
+    auto prog = loadBinary(rom, forceLittleEndian);
     cpu.load(prog);
 
     sgcore.loadModules("SDL", "OpenGL");

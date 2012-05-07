@@ -5,6 +5,7 @@ import std.stdio : File;
 
 import dcpu16.cpu;
 import dcpu16.hardware;
+import util : nativeToBigEndian;
 
 import main : CLOCKSPEED; // shudder
 
@@ -13,9 +14,11 @@ public class Floppy : IHardware
 {
 public:
 	/// Currently, the disk must be provided at start-up.
-	this(string diskPath)
+	this(string diskPath, bool littleEndian)
 	{
 		this.media = File(diskPath, "r+b");
+		this.buffer = new ushort[geom.wordsPerSector];
+		this.littleEndian = littleEndian;
 	}
 
 	void attach(CPU cpu) @safe
@@ -175,6 +178,12 @@ private:
 	/// Current track, for seek timing.
 	ushort track = 0;
 
+	/// Buffer for sector operations.
+	ushort[] buffer = null;
+
+	/// Force little-endian?
+	bool littleEndian = true;
+
 	bool hasMedia() @property @trusted
 	{
 		return media.isOpen;
@@ -197,16 +206,23 @@ private:
 		return cast(long)(CLOCKSPEED * SpindleSpinS / geom.sectorsPerTrack);
 	}
 
-	void readSector(ushort sector, ushort buffer) @trusted
+	void readSector(ushort sector, ushort addr) @trusted
 	{
+		auto mem = cpu.memory[addr..addr+geom.wordsPerSector];
+
 		media.seek(sector * geom.wordsPerSector * 2);
-		media.rawRead(cpu.memory[buffer..buffer+geom.wordsPerSector]);
+		media.rawRead(mem);
+		nativeToBigEndian(mem);
 	}
 
-	void writeSector(ushort sector, ushort buffer) @trusted
+	void writeSector(ushort sector, ushort addr) @trusted
 	{
+		auto mem = cpu.memory[addr..addr+geom.wordsPerSector];
+		buffer[] = mem[];
+		nativeToBigEndian(buffer);
+
 		media.seek(sector * geom.wordsPerSector * 2);
-		media.rawWrite(cpu.memory[buffer..buffer+geom.wordsPerSector]);
+		media.rawWrite(buffer);
 		media.flush();
 	}
 }
