@@ -8,6 +8,7 @@ import std.file;
 import dcpu16.cpu;
 import dcpu16.hardware;
 import main;
+import util : loadBinary;
 
 class Display : IHardware
 {
@@ -41,11 +42,11 @@ class Display : IHardware
 
     private SysTime waitOrigin;
 
-    this()
+    this(bool littleEndian)
     {
         texture = new uint[SWIDTH * SHEIGHT];
         texture[] = 0xFF1F1F1F;  // TODO: Nya logo
-        font = cast(ushort[]) read("font.bin");
+        font = loadBinary("font.bin", true); // Force LE for font.bin for now.
 
         userFont = font.ptr;
 
