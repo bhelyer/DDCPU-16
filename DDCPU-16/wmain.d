@@ -138,7 +138,7 @@ int entry(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCm
     if (args.length == 1) {
         rom = fileDialog(".");
         if (rom.length == 0) {
-            writeln("usage: ddcpu16 [--disk=PATH] [--little-endian] <rom>");
+            writeln("usage: ddcpu16 [--disk=PATH] [--big-endian] <rom>");
             return 0;
         }
     } else {
@@ -230,7 +230,7 @@ int entry(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCm
         cpu.register(floppy);
     }
 
-    auto prog = cast(ushort[]) read(rom);
+    auto prog = loadBinary(rom, forceLittleEndian);
     cpu.load(prog);
 
     long lastBlinkToggle;
