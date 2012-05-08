@@ -16,6 +16,7 @@ import display : Display;
 import floppy : Floppy;
 import keyboard : Keyboard;
 import util : loadBinary;
+import ex : DcpuException;
 
 alias clock.Clock DClock;
 
@@ -96,8 +97,16 @@ void realmain(string[] args)
         clock.tick();
         SysTime a = Clock.currTime();
         draw.clear();  // The texture won't render without this. SIEGE bug.
-        cpu.run(CLOCKSPEED/FPS);
-
+        try
+        {
+            cpu.run(CLOCKSPEED/FPS);
+        }
+        catch (DcpuException ex)
+        {
+            writefln("Error: %s", ex.msg);
+            cpu.debugDump();
+            return;
+        }
         display.render();
         texture.data(SWIDTH, SHEIGHT, 32, display.texture);
         texture.draw();
