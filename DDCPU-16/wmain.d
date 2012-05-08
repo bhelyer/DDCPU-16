@@ -15,6 +15,7 @@ import derelict.opengl.gl;
 import derelict.opengl.wgl;
 
 static import clock;
+import ex;
 import dcpu16.cpu;
 import floppy;
 import display;
@@ -245,7 +246,13 @@ int entry(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCm
 
         SysTime a = Clock.currTime();
 
-        cpu.run(CLOCKSPEED/FPS);
+        try {
+            cpu.run(CLOCKSPEED/FPS);
+        } catch (DcpuException ex) {
+            writefln("Error: %s", ex.msg);
+            cpu.debugDump();
+            return 0;
+        }
         display.render();
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SWIDTH, SHEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, display.texture.ptr);
 

@@ -7,7 +7,7 @@ import std.conv : to;
 import std.stdio : write, writeln, writef, writefln;
 
 import dcpu16.hardware;
-import ex : DcpuException;
+import ex;
 
 
 /**
