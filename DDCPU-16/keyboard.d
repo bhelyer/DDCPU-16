@@ -1,5 +1,6 @@
 /// Specification: http://dcpu.com/highnerd/rc_1/keyboard.txt
 module keyboard;
+version (none){  // Disabled for the moment.
 
 import std.array;
 import std.ascii : toLower, toUpper;
@@ -166,4 +167,6 @@ ushort siegeToKeyboard(uint kc)
     default:
         return 0;
     }
+}
+
 }

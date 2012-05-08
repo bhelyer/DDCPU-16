@@ -77,7 +77,7 @@
   <pathCv2pdb>$(VisualDInstallDir)cv2pdb\cv2pdb.exe</pathCv2pdb>
   <objfiles />
   <linkswitches />
-  <libfiles>siege.lib sieged.lib comdlg32.lib comctl32.lib</libfiles>
+  <libfiles />
   <libpaths>lib</libpaths>
   <deffile>ddcpu.def</deffile>
   <resfile />
@@ -200,7 +200,6 @@
   <File path="display.d" />
   <File path="floppy.d" />
   <File path="keyboard.d" />
-  <File path="main.d" />
-  <File path="ui.d" />
+  <File path="wmain.d" />
  </Folder>
 </DProject>

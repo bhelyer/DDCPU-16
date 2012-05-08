@@ -5,7 +5,7 @@ import std.datetime;
 import dcpu16.cpu;
 import dcpu16.hardware;
 
-import main : FPS;
+import wmain : FPS;
 
 
 class Clock : IHardware

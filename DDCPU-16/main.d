@@ -10,33 +10,26 @@ import std.utf;
 import core.thread;
 version (Windows) import core.sys.windows.windows;
 
-import siege.siege;
-import siege.input.keyboard : press;
+//import siege.siege;
+//import siege.input.keyboard : press;
 
 import dcpu16.cpu;
+static import bief;
 static import clock;
-import display : Display;
+//import display : Display;
 import floppy : Floppy;
-import keyboard : Keyboard;
-import ui;
+//import keyboard : Keyboard;
+//import ui;
 
+alias bief.read biefRead;
 alias clock.Clock DClock;
 
-enum CLOCKSPEED = 100_000;  // In hertz
-enum FPS = 60;
-enum SCALING = 4;
-enum TW = 4 * SCALING;  // tile width
-enum TH = 8 * SCALING;  // tile height
-enum WIDTH = 32;  // in tiles
-enum HEIGHT = 12; // in tiles
-enum BORDERWIDTH = 8 * SCALING;
-enum SWIDTH = WIDTH * TW + BORDERWIDTH * 2;
-enum SHEIGHT = HEIGHT * TH + BORDERWIDTH * 2;
 
-void main(string[] args)
+version (none) void main(string[] args)
 {
     version (Windows) {
     try {
+        biefRead("bieftest.txt");
         realmain(args);
     } catch (Throwable t) {
         MessageBoxW(null, toUTF16z(t.msg), toUTF16z("DDCPU 16"w), MB_OK | MB_ICONERROR);
@@ -46,7 +39,7 @@ void main(string[] args)
     }
 }
 
-void realmain(string[] args)
+version (none) void realmain(string[] args)
 {
     string rom;
 	string disk = null;
@@ -111,6 +104,9 @@ void realmain(string[] args)
                     prog = cast(ushort[]) read(rom);
                     cpu.load(prog);
                 }
+            }
+            if (press('D')) {
+                auto dui = new DebugUI(cpu);
             }
         }
 

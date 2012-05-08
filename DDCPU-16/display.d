@@ -7,7 +7,7 @@ import std.file;
 
 import dcpu16.cpu;
 import dcpu16.hardware;
-import main;
+import wmain;
 
 class Display : IHardware
 {

@@ -6,7 +6,7 @@ import std.stdio : File;
 import dcpu16.cpu;
 import dcpu16.hardware;
 
-import main : CLOCKSPEED; // shudder
+import wmain : CLOCKSPEED; // shudder
 
 /// Simulates an HIT HMD2043 floppy disk drive.
 public class Floppy : IHardware
