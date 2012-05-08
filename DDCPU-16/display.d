@@ -46,7 +46,7 @@ class Display : IHardware
     {
         texture = new uint[SWIDTH * SHEIGHT];
         texture[] = 0xFF1F1F1F;  // TODO: Nya logo
-        font = loadBinary("font.bin", littleEndian);
+        font = loadBinary("font.bin", true); // Force LE for font.bin for now.
 
         userFont = font.ptr;
 
