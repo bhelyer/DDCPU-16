@@ -198,8 +198,10 @@
   <File path="clock.d" />
   <File path="ddcpu.def" />
   <File path="display.d" />
+  <File path="ex.d" />
   <File path="floppy.d" />
   <File path="keyboard.d" />
   <File path="main.d" />
+  <File path="util.d" />
  </Folder>
 </DProject>
