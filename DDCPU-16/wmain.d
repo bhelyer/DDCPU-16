@@ -273,7 +273,6 @@ int entry(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCm
 
         SysTime b = Clock.currTime();
 
-        Thread.sleep(dur!"msecs"(16));
         Duration delta = b - a;
         if (delta < dur!"msecs"(1000/FPS)) {
             Thread.sleep(dur!"msecs"(1000/FPS) - delta);
