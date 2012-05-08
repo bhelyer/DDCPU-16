@@ -127,17 +127,17 @@ int entry(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCm
     string[] args = "DDCPU_16" ~ to!string(lpCmdLine).split();
     string rom;
     string disk;
+    bool forceLittleEndian = true;
 
-    getopt(args, "disk", &disk);
+    getopt(args, 
+           "disk", &disk, 
+           "little-endian", { forceLittleEndian = true; },
+           "big-endian", { forceLittleEndian = false; });
 
     if (args.length == 1) {
-        if (exists("intro.dcpu")) {
-            rom = "intro.dcpu";
-        } else {
-            rom = fileDialog(".");
-        }
+        rom = fileDialog(".");
         if (rom.length == 0) {
-            writeln("usage: ddcpu16 <rom>");
+            writeln("usage: ddcpu16 [--disk=PATH] [--little-endian] <rom>");
             return 0;
         }
     } else {
@@ -214,7 +214,7 @@ int entry(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCm
 
     auto cpu = new CPU();
 
-    auto display = new Display();
+    auto display = new Display(forceLittleEndian);
     cpu.register(display);
 
     auto dclock = new DClock();
@@ -225,7 +225,7 @@ int entry(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCm
 
     Floppy floppy;
     if (disk.length > 0) {
-        floppy = new Floppy(disk);
+        floppy = new Floppy(disk, forceLittleEndian);
         cpu.register(floppy);
     }
 

@@ -3,8 +3,11 @@
 module dcpu16.cpu;
 
 import std.array;
+import std.conv : to;
+import std.stdio : write, writeln, writef, writefln;
 
 import dcpu16.hardware;
+import ex : DcpuException;
 
 
 /**
@@ -26,6 +29,10 @@ class CPU
     protected bool mTriggerInterrupts = true;
     protected IHardware[] mDevices;
 
+    enum PC_HISTORY_LENGTH = 128;
+    private ushort[] pcHistory;
+    private int pcHead, pcTail, pcNext, pcNum;
+
     invariant()
     {
         assert(memory.length == MEMORY_SIZE);
@@ -35,6 +42,7 @@ class CPU
     this()
     {
         memory = new ushort[MEMORY_SIZE];
+        pcHistory = new ushort[PC_HISTORY_LENGTH];
     }
 
     void reset() @safe
@@ -70,6 +78,27 @@ class CPU
     }
 
     /**
+     * Adds the given PC value to a history of PC values.  This can
+     * be very handy during debugging to trace the execution of a
+     * program up until it crashed.
+     */
+    private void addToPcHistory(ushort pc) @safe
+    {
+        if (pcHistory[pcTail] == pc)
+            // Don't insert duplicates; this prevents sub pc, 1
+            // loops from completely filling the history.
+            return;
+
+        pcTail = pcNext;
+        pcHistory[pcNext] = pc;
+        pcNext = (pcNext+1) % pcHistory.length;
+        if (pcNum < pcHistory.length)
+            pcNum ++;
+        else
+            pcHead = pcNext;
+    }
+
+    /**
      * Run the CPU for a number of cycles.
      * The number is a minimum, more cycles may be run than given.
      * Returns: the actual number of cycles ran.
@@ -89,9 +118,11 @@ class CPU
                 interrupt(message);
             }
 
-            Instruction instruction = decode(memory[PC++]);
+            auto lastAddr = PC;
+            addToPcHistory(PC);
+            Instruction instruction = decode(memory[PC++], lastAddr);
             long cc = cycleCount;
-            execute(instruction);
+            execute(instruction, lastAddr);
             remainingCycles -= cast(int) (cycleCount - cc);
         }
         return remainingCycles + cycles;
@@ -116,18 +147,57 @@ class CPU
         mDevices ~= device;
     }
 
+    final void debugDump() @trusted
+    {
+        // TODO: take stream as argument.
+        writefln("Registers: A:%04x  B:%04x  C:%04x   I:%04x\n"
+                 "           X:%04x  Y:%04x  Z:%04x   J:%04x\n"
+                 "          PC:%04x SP:%04x EX:%04x",
+                 A, B, C, I, X, Y, Z, J, PC, SP, EX);
+
+        writefln("Last %d instructions at:", pcNum);
+        for (int i=0; i<pcNum; i+=8)
+        {
+            write(" ");
+            for (int j=i; j<pcNum && j<i+8; ++j)
+            {
+                auto k = (pcHead + j) % pcHistory.length;
+                writef(" %04x", pcHistory[k]);
+            }
+            writeln();
+        }
+
+        writeln("Stack:");
+        const step = 0x8;
+        auto start = SP & ~(step-1);
+        auto limit = (SP & ~(step-1)) + 0x40;
+        if (limit > 0x10000)
+            limit = 0x10000;
+        for (int i=start; i<limit; i+=step)
+        {
+            writef("%04x:", i);
+            for (auto j=i; j<limit && j<i+step; ++j)
+                if (j < SP)
+                    write(" ----");
+                else
+                    writef(" %04x", memory[j]);
+            writeln();
+        }
+    }
+
     /**
      * Execute an instruction.
      * Increments cycleCount with cycles consumed.
      */
-    protected final void execute(ref const Instruction instruction) @safe
+    protected final void execute(ref const Instruction instruction, ushort addr) @safe
     {
         Word a, b;
         void condition(bool delegate() @safe dg) 
         {
-            Instruction i = decode(memory[PC++]);
+            auto lastAddr = PC;
+            Instruction i = decode(memory[PC++], lastAddr);
             if (dg()) {
-                execute(i);
+                execute(i, lastAddr);
             } else {
                 skip(i);
             }
@@ -185,7 +255,9 @@ class CPU
                 break;
             default:
                 ushort fff = instruction.special;
-                assert(false);
+                throw new DcpuException("invalid special opcode 0x"
+                                        ~ hexify(instruction.special)
+                                        ~ " at address 0x" ~ hexify(addr));
             }
             break;
         case SET:
@@ -315,7 +387,9 @@ class CPU
             J--;
             break;
         default:
-            assert(false);
+            throw new DcpuException("invalid basic opcode 0x"
+                                    ~ hexify(instruction.opcode)
+                                    ~ " at address 0x" ~ hexify(addr));
         }
     }
 
@@ -406,7 +480,8 @@ class CPU
         }
 
         if (i.opcode >= Instruction.Opcode.IFB && i.opcode <= Instruction.Opcode.IFU) {
-            Instruction i2 = decode(memory[PC++]);
+            auto lastAddr = PC;
+            Instruction i2 = decode(memory[PC++], lastAddr);
             skip(i2);
         }
     }
@@ -422,9 +497,10 @@ struct Word
 }
 
 /// Convert word 'op' into an Instruction.
-Instruction decode(ushort op) pure @safe
+Instruction decode(ushort op, ushort addr) @safe
 {
-    assert(op != 0);
+    if (op == 0)
+        throw new DcpuException("invalid instruction at 0x" ~ hexify(addr));
     Instruction instruction;
 
     instruction.opcode = cast(Instruction.Opcode) (op & 0b000000_00000_11111);
@@ -437,7 +513,9 @@ Instruction decode(ushort op) pure @safe
 
     ushort b = (op & 0b000000_11111_00000) >> 5;
     instruction.b = cast(Instruction.Value) b;
-    assert(instruction.b != Instruction.Value.LITERAL);
+    if (instruction.b == Instruction.Value.LITERAL)
+        throw new DcpuException("b argument has literal at address 0x"
+                                ~ hexify(addr));
 
     return instruction;
 }
@@ -685,3 +763,9 @@ immutable string[Instruction.Value.max+1] valuestrings = [
     "%s",
     "%s"
 ];
+
+// Because @safe is a bitch.
+string hexify(ushort v) @trusted
+{
+    return to!string(v, 16);
+}

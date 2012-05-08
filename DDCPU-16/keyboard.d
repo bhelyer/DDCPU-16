@@ -144,11 +144,8 @@ ushort shiftTransform(ushort k)
     }
 }
 
-import std.stdio;
-
 ushort siegeToKeyboard(uint kc)
 {
-    writeln(kc);
     switch (kc) {
     case VK_BACK: return 0x10;
     case VK_RETURN: return 0x11;
