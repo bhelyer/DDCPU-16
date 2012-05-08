@@ -43,13 +43,13 @@ void main(string[] args)
 void realmain(string[] args)
 {
     string rom;
-	string disk = null;
-	bool forceLittleEndian = true;
+    string disk = null;
+    bool forceLittleEndian = true;
 
-	getopt(args,
-		   "disk", &disk,
-		   "little-endian", { forceLittleEndian = true; },
-		   "big-endian", { forceLittleEndian = false; });
+    getopt(args,
+           "disk", &disk,
+           "little-endian", { forceLittleEndian = true; },
+           "big-endian", { forceLittleEndian = false; });
 
     if (args.length == 1) {
         writeln("usage: ddcpu16 [--disk=PATH] [--little-endian] <rom>");
@@ -65,12 +65,12 @@ void realmain(string[] args)
     auto clock = new DClock();
     cpu.register(clock);
 
-	Floppy floppy = null;
-	if (disk.length > 0)
-	{
-		floppy = new Floppy(disk, forceLittleEndian);
-		cpu.register(floppy);
-	}
+    Floppy floppy = null;
+    if (disk.length > 0)
+    {
+        floppy = new Floppy(disk, forceLittleEndian);
+        cpu.register(floppy);
+    }
 
     auto prog = loadBinary(rom, forceLittleEndian);
     cpu.load(prog);
