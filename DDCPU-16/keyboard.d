@@ -1,16 +1,14 @@
 /// Specification: http://dcpu.com/highnerd/rc_1/keyboard.txt
 module keyboard;
-version (none){  // Disabled for the moment.
 
+import core.sys.windows.windows;
 import std.array;
 import std.ascii : toLower, toUpper;
-
-import siege.siege;
 
 import dcpu16.cpu;
 import dcpu16.hardware;
 
-class Keyboard : Entity, IHardware
+class Keyboard : IHardware
 {
     CPU cpu;
     ushort[] buffer;
@@ -76,7 +74,7 @@ class Keyboard : Entity, IHardware
         }
     }
 
-    override void evKeyboardKeyPress(uint kc)
+    void keyPress(uint kc)
     {
         ushort dk = cast(ushort) toLower(siegeToKeyboard(kc));
 
@@ -95,7 +93,7 @@ class Keyboard : Entity, IHardware
         }
     }
 
-    override void evKeyboardKeyRelease(uint kc)
+    void keyRelease(uint kc)
     {
         ushort dk = cast(ushort) toLower(siegeToKeyboard(kc));
         
@@ -135,7 +133,7 @@ ushort shiftTransform(ushort k)
     case '=': return '+';
     case '[': return '{';
     case ']': return '}';
-    case ':': return ';';
+    case ';': return ':';
     case '\'': return '"';
     case ',': return '<';
     case '.': return '>';
@@ -146,27 +144,31 @@ ushort shiftTransform(ushort k)
     }
 }
 
+import std.stdio;
+
 ushort siegeToKeyboard(uint kc)
 {
-    if (kc >= 0x20 && kc <= 0x7f) {
+    writeln(kc);
+    switch (kc) {
+    case VK_BACK: return 0x10;
+    case VK_RETURN: return 0x11;
+    case VK_INSERT: return 0x12;
+    case VK_DELETE: return 0x13;
+    case VK_UP: return 0x80;
+    case VK_DOWN: return 0x81;
+    case VK_LEFT: return 0x82;
+    case VK_RIGHT: return 0x83;
+    case VK_SHIFT: return 0x90;
+    case VK_CONTROL: return 0x91;
+    case 0xBC: return ',';
+    case 0xBE: return '.';
+    case 0xDB: return '[';
+    case 0xDC: return '\\';
+    case 0xDD: return ']';
+    case 0xDE: return '\'';
+    case 186: return ';';
+    case 191: return '/';
+    default:
         return cast(ushort) kc;
     }
-    switch (kc) {
-    case SG_KEYBOARD_KEY_BACKSPACE: return 0x10;
-    case SG_KEYBOARD_KEY_ENTER: return 0x11;
-    case SG_KEYBOARD_KEY_INSERT: return 0x12;
-    case SG_KEYBOARD_KEY_DELETE: return 0x13;
-    case SG_KEYBOARD_KEY_UP: return 0x80;
-    case SG_KEYBOARD_KEY_DOWN: return 0x81;
-    case SG_KEYBOARD_KEY_LEFT: return 0x82;
-    case SG_KEYBOARD_KEY_RIGHT: return 0x83;
-    case SG_KEYBOARD_KEY_LSHIFT:
-    case SG_KEYBOARD_KEY_RSHIFT: return 0x90;
-    case SG_KEYBOARD_KEY_LCTRL:
-    case SG_KEYBOARD_KEY_RCTRL: return 0x91;
-    default:
-        return 0;
-    }
-}
-
 }

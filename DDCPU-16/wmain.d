@@ -18,6 +18,7 @@ static import clock;
 import dcpu16.cpu;
 import floppy;
 import display;
+import keyboard : Keyboard;
 
 alias clock.Clock DClock;
 
@@ -100,6 +101,7 @@ string szVideoPane = "MdiVideoPane";
 HWND hwndClient, hwndChild;
 HINSTANCE hinst;
 HGLRC hrc;
+Keyboard keyboard;
 
 extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -218,6 +220,9 @@ int entry(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCm
     auto dclock = new DClock();
     cpu.register(dclock);
 
+    keyboard = new Keyboard();
+    cpu.register(keyboard);
+
     Floppy floppy;
     if (disk.length > 0) {
         floppy = new Floppy(disk);
@@ -246,7 +251,6 @@ int entry(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCm
 
 
         HDC hdc = GetDC(hwndChild);
-        glClear(GL_COLOR_BUFFER_BIT);
 
         glBegin(GL_QUADS);
             glTexCoord2i(0,1);
@@ -329,6 +333,12 @@ extern (Windows) LRESULT videoWndProc(HWND hwnd, UINT message, WPARAM wParam, LP
         case WM_SIZE:
             disableOpenGL(hwnd, hrc);
             hrc = enableOpenGL(hwnd);
+            return 0;
+        case WM_KEYDOWN:
+            keyboard.keyPress(wParam);
+            return 0;
+        case WM_KEYUP:
+            keyboard.keyRelease(wParam);
             return 0;
         default:
             break;
