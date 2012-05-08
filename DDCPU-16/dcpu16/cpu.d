@@ -29,6 +29,10 @@ class CPU
     protected bool mTriggerInterrupts = true;
     protected IHardware[] mDevices;
 
+    enum PC_HISTORY_LENGTH = 128;
+    private ushort[] pcHistory;
+    private int pcHead, pcTail, pcNext, pcNum;
+
     invariant()
     {
         assert(memory.length == MEMORY_SIZE);
@@ -38,6 +42,7 @@ class CPU
     this()
     {
         memory = new ushort[MEMORY_SIZE];
+        pcHistory = new ushort[PC_HISTORY_LENGTH];
     }
 
     void reset() @safe
@@ -73,6 +78,27 @@ class CPU
     }
 
     /**
+     * Adds the given PC value to a history of PC values.  This can
+     * be very handy during debugging to trace the execution of a
+     * program up until it crashed.
+     */
+    private void addToPcHistory(ushort pc) @safe
+    {
+        if (pcHistory[pcTail] == pc)
+            // Don't insert duplicates; this prevents sub pc, 1
+            // loops from completely filling the history.
+            return;
+
+        pcTail = pcNext;
+        pcHistory[pcNext] = pc;
+        pcNext = (pcNext+1) % pcHistory.length;
+        if (pcNum < pcHistory.length)
+            pcNum ++;
+        else
+            pcHead = pcNext;
+    }
+
+    /**
      * Run the CPU for a number of cycles.
      * The number is a minimum, more cycles may be run than given.
      * Returns: the actual number of cycles ran.
@@ -93,6 +119,7 @@ class CPU
             }
 
             auto lastAddr = PC;
+            addToPcHistory(PC);
             Instruction instruction = decode(memory[PC++], lastAddr);
             long cc = cycleCount;
             execute(instruction, lastAddr);
@@ -127,6 +154,18 @@ class CPU
                  "           X:%04x  Y:%04x  Z:%04x   J:%04x\n"
                  "          PC:%04x SP:%04x EX:%04x",
                  A, B, C, I, X, Y, Z, J, PC, SP, EX);
+
+        writefln("Last %d instructions at:", pcNum);
+        for (int i=0; i<pcNum; i+=8)
+        {
+            write(" ");
+            for (int j=i; j<pcNum && j<i+8; ++j)
+            {
+                auto k = (pcHead + j) % pcHistory.length;
+                writef(" %04x", pcHistory[k]);
+            }
+            writeln();
+        }
 
         writeln("Stack:");
         const step = 0x8;
