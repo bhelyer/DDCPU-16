@@ -85,6 +85,13 @@ class Keyboard : IHardware
             }
             pressedChars[dk] = true;
         }
+
+        if (dk == 0x03)
+        {
+            // Ctrl+Pause = Break
+            cpu.forceAbort = true;
+            return;
+        }
         
         pressedKeys[dk] = true;
         if (interruptsEnabled) {

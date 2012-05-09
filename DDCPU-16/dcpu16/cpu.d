@@ -25,6 +25,7 @@ class CPU
     long cycleCount;  /// How many cycles the CPU has run.
     bool onFire;  /// Are we on fire? (Go slower, change RAM randomly).
     ushort[] interruptQueue;  /// If length > 256, then we catch fire.
+    bool forceAbort;  /// If true, CPU will abort with an exception.
 
     protected bool mTriggerInterrupts = true;
     protected IHardware[] mDevices;
@@ -117,6 +118,9 @@ class CPU
                 interruptQueue.popFront();
                 interrupt(message);
             }
+
+            if (forceAbort)
+                throw new DcpuException("forced to abort");
 
             auto lastAddr = PC;
             addToPcHistory(PC);
