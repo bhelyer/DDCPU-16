@@ -74,6 +74,10 @@ extern (Windows) {
     LRESULT DefFrameProcW(HWND, HWND, UINT, WPARAM, LPARAM);
     int ChoosePixelFormat(HDC, PIXELFORMATDESCRIPTOR*);
     BOOL SwapBuffers(HDC);
+    HMENU CreateMenu();
+    HMENU CreatePopupMenu();
+    BOOL AppendMenuW(HMENU, UINT, UINT, void*);
+    BOOL SetMenu(HWND, HMENU);
 
     enum OFN_FILEMUSTEXIST = 0x001000;
     enum DT_CENTER = 1;
@@ -85,6 +89,12 @@ extern (Windows) {
     enum PFD_DOUBLEBUFFER = 0x00000001;
     enum PFD_DRAW_TO_WINDOW = 0x00000004;
     enum PFD_SUPPORT_OPENGL = 0x00000020;
+    enum MF_DISABLED = 0x2;
+    enum MF_ENABLED = 0x0;
+    enum MF_GRAYED = 0x1;
+    enum MF_POPUP = 0x10;
+    enum MF_SEPARATOR = 0x800;
+    enum MF_STRING = 0x0;
 }
 
 enum CLOCKSPEED = 100_000;  // In hertz
@@ -99,10 +109,20 @@ enum SWIDTH = WIDTH * TW + BORDERWIDTH * 2;
 enum SHEIGHT = HEIGHT * TH + BORDERWIDTH * 2;
 
 string szVideoPane = "MdiVideoPane";
-HWND hwndClient, hwndChild;
+HWND hwndClient, hwndChild, hwndConsole;
 HINSTANCE hinst;
 HGLRC hrc;
 Keyboard keyboard;
+
+UINT idNext = 100;
+void delegate(HWND, ushort)[UINT] idHandlers;
+
+UINT getId(void delegate(HWND, ushort) handler)
+{
+    auto id = idNext++;
+    idHandlers[id] = handler;
+    return id;
+}
 
 extern (Windows) int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -308,6 +328,21 @@ extern (Windows) LRESULT frameWndProc(HWND hwnd, UINT message, WPARAM wParam, LP
     switch (message)
     {
         case WM_CREATE:
+            {
+                auto hMenu = CreateMenu();
+
+                auto hFile = CreatePopupMenu();
+                AppendMenuW(hFile, MF_STRING,
+                            getId((hwnd, id)
+                            {
+                                PostQuitMessage(0);
+                            }),
+                            cast(void*) "E&xit"w.toUTF16z());
+                AppendMenuW(hMenu, MF_STRING | MF_POPUP, cast(UINT)hFile, cast(void*) "&File".toUTF16z());
+
+                SetMenu(hwnd, hMenu);
+            }
+
             hwndClient = CreateWindowExW(0, toUTF16z("MDICLIENT"w), null,
                                       WS_CHILD | WS_CLIPCHILDREN | WS_VISIBLE,
                                       0, 0, 0, 0, hwnd, cast(HMENU) 1, hinst,
@@ -323,6 +358,13 @@ extern (Windows) LRESULT frameWndProc(HWND hwnd, UINT message, WPARAM wParam, LP
 
             hwndChild = cast(HWND) SendMessageW(hwndClient, WM_MDICREATE, 0, cast(LPARAM) cast(MDICREATESTRUCTW*) &mdicreate);
             return 0;
+        case WM_COMMAND:
+            {
+                auto id = (cast(ushort)(wParam & 0xffff));
+                if (auto dgptr = id in idHandlers)
+                    (*dgptr)(hwnd, id);
+            }
+            break;
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
